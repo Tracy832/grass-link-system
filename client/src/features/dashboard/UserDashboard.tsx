@@ -1,10 +1,10 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom'; // 1. Import Navigate
+import { useNavigate } from 'react-router-dom'; // 1. Added for navigation
 import logo from '../../assets/logo.jpeg';
 import { getMaintenanceRequirement, getRankBenefits } from './rankLogic';
 
 const UserDashboard = () => {
-  const navigate = useNavigate(); // 2. Initialize Navigate
+  const navigate = useNavigate(); // 2. Initialize the navigator
   const colors = {
     navy: '#1d3557', 
     green: '#03ac13',
@@ -29,22 +29,6 @@ const UserDashboard = () => {
   const benefits = getRankBenefits(user.currentStar);
   const isQualified = user.monthlyPurchasePV >= requiredPV;
 
-  const getStrategicAdvice = () => {
-    if (user.currentStar === 3) {
-      const candidates = [...user.downlines].sort((a, b) => b.personalPV - a.personalPV);
-      const closest = candidates[0];
-      const pvLeft = 1000 - closest.personalPV;
-
-      return (
-        <span>
-          You need one more person to go to 4-Star. <br />
-          <strong style={{ color: colors.green }}>{closest.name}</strong> is the closest to getting to 3-Star—only <strong>{pvLeft} PV</strong> left!
-        </span>
-      );
-    }
-    return "Keep supporting your legs for the next rank!";
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900">
       {/* SIDEBAR */}
@@ -58,20 +42,33 @@ const UserDashboard = () => {
           </h2>
         </div>
         <nav className="flex-1 p-4 mt-4 space-y-2">
-          <button onClick={() => navigate('/dashboard')} className="w-full text-left px-4 py-3 rounded-xl text-[11px] font-black uppercase bg-white/10 border-l-4" style={{ borderColor: colors.green }}>Dashboard</button>
-          
-          {/* 3. Button now navigates to /tree */}
           <button 
-            onClick={() => navigate('/tree')} 
-            className="w-full text-left px-4 py-3 hover:bg-white/5 rounded-xl text-[11px] font-black uppercase opacity-60"
+            onClick={() => navigate('/dashboard')}
+            className="w-full text-left px-4 py-3 rounded-xl text-[11px] font-black uppercase bg-white/10 border-l-4" 
+            style={{ borderColor: colors.green }}
+          >
+            Dashboard
+          </button>
+          
+          {/* UPDATED: Navigates to the Tree */}
+          <button 
+            onClick={() => navigate('/tree')}
+            className="w-full text-left px-4 py-3 hover:bg-white/5 rounded-xl text-[11px] font-black uppercase opacity-60 transition-all"
           >
             My Team Tree
           </button>
           
-          <button className="w-full text-left px-4 py-3 hover:bg-white/5 rounded-xl text-[11px] font-black uppercase opacity-60">Qualifications</button>
+          {/* UPDATED: Navigates to Qualifications */}
+          <button 
+            onClick={() => navigate('/qualifications')}
+            className="w-full text-left px-4 py-3 hover:bg-white/5 rounded-xl text-[11px] font-black uppercase opacity-60 transition-all"
+          >
+            Qualifications
+          </button>
         </nav>
       </aside>
 
+      {/* MAIN CONTENT */}
       <main className="flex-1 overflow-y-auto">
         <header className="bg-white p-6 flex justify-between items-center border-b border-gray-100 sticky top-0 z-20">
           <div>
@@ -79,7 +76,7 @@ const UserDashboard = () => {
             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.3em]">ID: {user.cardNumber}</p>
           </div>
           
-          <div className="px-6 py-3 rounded-2xl border flex flex-col items-end shadow-sm min-w-[280px]"
+          <div className={`px-6 py-3 rounded-2xl border flex flex-col items-end shadow-sm min-w-[280px]`}
                style={{ backgroundColor: isQualified ? colors.lightGreen : '#fffbeb', borderColor: isQualified ? colors.green : '#f59e0b' }}>
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${isQualified ? 'bg-green-600' : 'bg-amber-500 animate-pulse'}`}></div>
@@ -94,23 +91,28 @@ const UserDashboard = () => {
         </header>
 
         <div className="p-8 space-y-6">
+          {/* ADVISOR BANNER */}
           <div className="rounded-3xl p-8 text-white shadow-xl relative overflow-hidden" style={{ backgroundColor: colors.navy }}>
-            <div className="flex items-start gap-6 relative z-10">
+            <div className="absolute right-[-20px] top-[-20px] text-9xl opacity-10 rotate-12">🏆</div>
+            <div className="relative z-10 flex items-start gap-6">
               <div className="bg-white/10 p-4 rounded-2xl text-3xl border border-white/10 shadow-inner">💡</div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: colors.green }}>Strategic Advice</p>
-                <p className="text-lg font-bold leading-tight">{getStrategicAdvice()}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: colors.green }}>Next Rank Advisor</p>
+                <p className="text-lg font-bold leading-tight max-w-2xl">
+                   One more person to reach Star 4! <strong>Sarah Wanjiku</strong> is currently the closest—only <strong>20 PV</strong> more for her to reach Star 3!
+                </p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* STAT CARDS */}
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Personal Accumulated PV</p>
               <h2 className="text-4xl font-black mt-2" style={{ color: colors.navy }}>{user.personalAccumulatedPV}</h2>
             </div>
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Team Group PV</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Group PV</p>
               <h2 className="text-4xl font-black mt-2" style={{ color: colors.navy }}>{user.groupPV}</h2>
             </div>
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
@@ -121,30 +123,24 @@ const UserDashboard = () => {
                   <span style={{ color: colors.green }}>{benefits.directBonus}</span>
                 </div>
                 <div className="flex justify-between border-b border-slate-50 pb-1 uppercase">
-                  <span className="text-slate-500 font-normal">Retail Profit</span>
-                  <span style={{ color: colors.green }}>{benefits.retailProfit}</span>
-                </div>
-                <div className="flex justify-between uppercase">
                   <span className="text-slate-500 font-normal">Sponsor Bonus</span>
                   <span style={{ color: colors.green }}>{benefits.sponsorBonus}</span>
                 </div>
               </div>
             </div>
           </div>
-
+          
+          {/* RANK PROGRESS BAR */}
           <section className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center">Membership Ranks</h3>
             <div className="flex justify-between items-center max-w-5xl mx-auto gap-2">
               {[...Array(10)].map((_, i) => (
                 <div key={i} className="flex flex-col items-center flex-1">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black
-                    ${i <= user.currentStar ? 'text-white shadow-lg' : 'bg-slate-50 text-slate-200 border border-slate-100'}`}
-                    style={{ backgroundColor: i <= user.currentStar ? colors.green : '', transform: i === user.currentStar ? 'scale(1.2)' : 'scale(1)' }}>
+                    ${i <= user.currentStar ? 'text-white' : 'bg-slate-50 text-slate-200 border'}`}
+                    style={{ backgroundColor: i <= user.currentStar ? colors.green : '' }}>
                     {i}
                   </div>
-                  <div className={`h-1.5 w-full mt-4 rounded-full ${i <= user.currentStar ? '' : 'bg-slate-50'}`}
-                       style={{ backgroundColor: i <= user.currentStar ? colors.green : '' }}></div>
-                  <span className={`text-[8px] mt-2 font-black uppercase ${i <= user.currentStar ? 'text-slate-800' : 'text-slate-200'}`}>Level {i}</span>
+                  <span className="text-[8px] mt-2 font-black uppercase">Star {i}</span>
                 </div>
               ))}
             </div>
