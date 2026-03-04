@@ -1,50 +1,58 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import logo from '../../assets/logo.jpeg';
-import supplementsBg from '../../assets/suplements.jpeg';
+// Ensure you have a suplements image in your assets
+import bgImage from '../../assets/suplements.jpeg'; 
 
 const Login = () => {
+  const [email, setEmail] = useState('');
+  const [cardNo, setCardNo] = useState('');
+  const navigate = useNavigate();
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Logic: Save as distributor and go to dashboard
+    const sessionUser = { name: "Member", email, role: "distributor" };
+    localStorage.setItem('user', JSON.stringify(sessionUser));
+    navigate('/dashboard');
+  };
+
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
-      style={{ backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${supplementsBg})` }}
-    >
-      <div className="bg-white/70 backdrop-blur-lg p-8 rounded-3xl shadow-2xl w-full max-w-xs border border-white/30 relative overflow-hidden">
-        
-        <div className="text-center mb-8">
-          <img src={logo} alt="Logo" className="w-16 h-16 object-contain mb-4 mx-auto drop-shadow-sm" />
-          <h2 className="text-xl font-bold text-green-900 tracking-tight">Welcome Back!</h2>
-          <p className="text-[10px] text-green-800/60 font-semibold tracking-widest mt-1 uppercase">Log in to your account</p>
+    <div className="min-h-screen flex items-center justify-center bg-cover bg-center p-6" 
+         style={{ backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${bgImage})` }}>
+      
+      <div className="w-full max-w-md bg-white/95 backdrop-blur-sm p-10 rounded-[2.5rem] shadow-2xl border border-white/20">
+        <div className="flex flex-col items-center mb-8">
+          <img src={logo} alt="Logo" className="w-20 h-20 rounded-full object-cover mb-4 shadow-lg" />
+          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Member Login</h2>
+          <p className="text-[10px] font-black text-red-600 uppercase tracking-[0.2em] mt-2">
+            ⚠️ Unauthorized Personnel Prohibited
+          </p>
         </div>
-
-        <form className="space-y-4">
-          <div className="group">
-            <label className="text-[10px] font-bold text-green-900 uppercase ml-1 opacity-60">Email Address</label>
-            <input 
-              type="email" 
-              placeholder="email@example.com" 
-              className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl focus:ring-2 focus:ring-green-500 outline-none placeholder:text-gray-400 text-gray-800" 
-            />
-          </div>
-
-          <div className="group">
-            <label className="text-[10px] font-bold text-green-900 uppercase ml-1 opacity-60">Password</label>
-            <input 
-              type="password" 
-              placeholder="Enter Card No" 
-              className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl focus:ring-2 focus:ring-green-500 outline-none placeholder:text-gray-400 text-gray-800" 
-            />
-          </div>
-
-          <button className="w-full bg-green-700 text-white py-3 rounded-xl font-bold hover:bg-green-800 transition-all text-xs shadow-lg mt-4 active:scale-95">
-            LOG IN
+        
+        <form onSubmit={handleLogin} className="space-y-4">
+          <input 
+            type="email" 
+            placeholder="Email Address" 
+            required
+            className="w-full p-4 rounded-2xl bg-slate-100 border-2 border-transparent focus:border-[#03ac13] outline-none text-sm font-bold"
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input 
+            type="password" 
+            placeholder="Enter Card No. (GI-XXXX-2026)" 
+            required
+            className="w-full p-4 rounded-2xl bg-slate-100 border-2 border-transparent focus:border-[#03ac13] outline-none text-sm font-bold"
+            onChange={(e) => setCardNo(e.target.value)}
+          />
+          <button type="submit" className="w-full bg-[#1d3557] text-white p-4 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-lg hover:bg-slate-800 transition-all">
+            Sign In
           </button>
         </form>
 
-        <div className="mt-8 text-center">
-          <p className="text-[11px] text-gray-600">
-            Don't have an account? <a href="/signup" className="ml-1 text-green-800 font-bold hover:underline">Sign Up</a>
-          </p>
-        </div>
+        <p className="mt-8 text-center text-[10px] font-black text-slate-400 uppercase">
+          New to Grass? <Link to="/signup" className="text-[#03ac13]">Join Now</Link>
+        </p>
       </div>
     </div>
   );
