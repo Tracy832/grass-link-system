@@ -1,15 +1,14 @@
 import React from 'react';
 
-// 1. UPDATE THE INTERFACE to include inventory
+// 1. THE INTERFACE: Must include 'inventory' to match AdminDashboard.tsx
 interface InventoryTableProps {
   onOpenModal: () => void;
-  inventory: any[]; // Add this line to resolve the 'inventory' error
+  inventory: any[]; // This line fixes the 'Property does not exist' error
 }
 
 const InventoryTable: React.FC<InventoryTableProps> = ({ onOpenModal, inventory }) => {
   
-  // 2. Use the passed 'inventory' prop if it has data, otherwise fallback to your list
-  // This makes the component flexible!
+  // 2. FALLBACK LOGIC: If 'inventory' is empty, we show the full master list
   const displayData = inventory && inventory.length > 0 ? inventory : [
     { name: "Co-enzyme tablets", stock: 120, dist: 2500, pv: 20, type: 'supplement' },
     { name: "Pure ginseng", stock: 95, dist: 2500, pv: 20, type: 'supplement' },
@@ -76,7 +75,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ onOpenModal, inventory 
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {displayData.map((item: any, i: number) => { // Changed to displayData
+            {displayData.map((item: any, i: number) => {
               const isLow = (item.type === 'supplement' && item.stock < 50) || 
                             (item.type === 'machine' && item.stock < 2) ||
                             (item.type === 'chair' && item.stock < 1);
@@ -89,8 +88,8 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ onOpenModal, inventory 
                       {item.stock}
                     </span>
                   </td>
-                  <td className="p-8 font-bold text-xs text-slate-600">KES {item.dist.toLocaleString()}</td>
-                  <td className="p-8 font-black text-sm text-[#03ac13]">{item.pv} PV</td>
+                  <td className="p-8 font-bold text-xs text-slate-600">KES {item.dist?.toLocaleString() || item.price?.toLocaleString()}</td>
+                  <td className="p-8 font-black text-sm text-[#03ac13]">{item.pv || item.pvs} PV</td>
                   <td className="p-8 text-center">
                     <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${isLow ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                       {isLow ? 'Low Stock' : 'Optimal'}
