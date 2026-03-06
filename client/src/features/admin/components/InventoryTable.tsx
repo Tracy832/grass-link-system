@@ -1,12 +1,16 @@
 import React from 'react';
 
+// 1. UPDATE THE INTERFACE to include inventory
 interface InventoryTableProps {
   onOpenModal: () => void;
+  inventory: any[]; // Add this line to resolve the 'inventory' error
 }
 
-const InventoryTable: React.FC<InventoryTableProps> = ({ onOpenModal }) => {
-  // Master Ledger with ALL catalog products and current stock levels
-  const inventoryData = [
+const InventoryTable: React.FC<InventoryTableProps> = ({ onOpenModal, inventory }) => {
+  
+  // 2. Use the passed 'inventory' prop if it has data, otherwise fallback to your list
+  // This makes the component flexible!
+  const displayData = inventory && inventory.length > 0 ? inventory : [
     { name: "Co-enzyme tablets", stock: 120, dist: 2500, pv: 20, type: 'supplement' },
     { name: "Pure ginseng", stock: 95, dist: 2500, pv: 20, type: 'supplement' },
     { name: "Cordycep tablets", stock: 15, dist: 2500, pv: 20, type: 'supplement' },
@@ -72,8 +76,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({ onOpenModal }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {inventoryData.map((item, i) => {
-              // Threshold Logic: Machine < 2, Supplement < 50, Chair < 1
+            {displayData.map((item: any, i: number) => { // Changed to displayData
               const isLow = (item.type === 'supplement' && item.stock < 50) || 
                             (item.type === 'machine' && item.stock < 2) ||
                             (item.type === 'chair' && item.stock < 1);
