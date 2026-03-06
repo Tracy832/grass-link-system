@@ -1,65 +1,78 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Outlet, useNavigate, Link, useLocation } from 'react-router-dom';
+import logo from '../../assets/logo.jpeg';
 
-const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
+const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [showAlerts, setShowAlerts] = useState(false);
 
-  const colors = { navy: '#1d3557', green: '#03ac13' };
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    navigate('/');
+  };
 
-  const notifications = [
-    { id: 1, text: "Sarah Wanjiku is 20 PV from Star 3!", type: "goal" },
-    { id: 2, text: "New member joined Leg C", type: "info" },
-    { id: 3, text: "Mandatory PV due in 4 days", type: "warning" }
-  ];
+  // Helper to highlight active links
+  const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* NOTIFICATION BELL (Top Right) */}
-      <div className="fixed top-6 right-6 z-[60] print:hidden">
-        <button 
-          onClick={() => setShowAlerts(!showAlerts)}
-          className="bg-white p-3 rounded-full shadow-lg border border-slate-100 relative hover:scale-110 transition-transform"
-        >
-          <span className="text-xl">🔔</span>
-          <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
-        </button>
-
-        {showAlerts && (
-          <div className="absolute right-0 mt-3 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 animate-bounce-in">
-            <h3 className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest text-center">Activity Center</h3>
-            <div className="space-y-3">
-              {notifications.map(n => (
-                <div key={n.id} className="text-[11px] font-bold p-3 bg-slate-50 rounded-xl border-l-4 shadow-sm" style={{ borderColor: n.type === 'goal' ? colors.green : '#3b82f6' }}>
-                  {n.text}
-                </div>
-              ))}
-            </div>
+    <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
+      {/* 1. TOP NAVIGATION BAR */}
+      <header className="bg-white px-8 py-3 border-b flex justify-between items-center sticky top-0 z-50 shadow-sm">
+        <div className="flex items-center gap-4">
+          <img src={logo} alt="Grass Logo" className="w-10 h-10 rounded-full border shadow-sm" />
+          <div className="leading-tight">
+            <h1 className="text-sm font-black text-slate-900 uppercase tracking-tighter">Member Portal</h1>
+            <p className="text-[10px] font-bold text-[#03ac13] uppercase tracking-widest">Grass International</p>
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* RENDER THE ACTUAL PAGE CONTENT HERE */}
-      <div className="pb-20 md:pb-0">
-        {children}
-      </div>
+        <div className="flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-1">
+            <Link 
+              to="/dashboard" 
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isActive('/dashboard') ? 'bg-slate-100 text-[#1d3557]' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              Overview
+            </Link>
+            <Link 
+              to="/dashboard/qualifications" 
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isActive('/dashboard/qualifications') ? 'bg-slate-100 text-[#1d3557]' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              Qualifications
+            </Link>
+            <Link 
+              to="/dashboard/team" 
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isActive('/dashboard/team') ? 'bg-slate-100 text-[#1d3557]' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              My Team
+            </Link>
+          </nav>
+          
+          <button 
+            onClick={handleLogout}
+            className="text-slate-400 hover:text-red-600 font-black text-[10px] uppercase transition-colors flex items-center gap-2 border-l pl-6"
+          >
+            Logout <span>➔</span>
+          </button>
+        </div>
+      </header>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-8 py-3 flex justify-between items-center md:hidden z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-        <button onClick={() => navigate('/dashboard')} className={`flex flex-col items-center ${location.pathname === '/dashboard' ? 'opacity-100' : 'opacity-30'}`}>
-          <span className="text-xl">🏠</span>
-          <span className="text-[8px] font-black uppercase mt-1" style={{ color: colors.navy }}>Home</span>
-        </button>
-        <button onClick={() => navigate('/tree')} className={`flex flex-col items-center ${location.pathname === '/tree' ? 'opacity-100' : 'opacity-30'}`}>
-          <span className="text-xl">🌳</span>
-          <span className="text-[8px] font-black uppercase mt-1" style={{ color: colors.navy }}>Tree</span>
-        </button>
-        <button onClick={() => navigate('/qualifications')} className={`flex flex-col items-center ${location.pathname === '/qualifications' ? 'opacity-100' : 'opacity-30'}`}>
-          <span className="text-xl">📜</span>
-          <span className="text-[8px] font-black uppercase mt-1" style={{ color: colors.navy }}>Rules</span>
-        </button>
-      </nav>
+      {/* 2. DYNAMIC CONTENT AREA */}
+      <main className="flex-1 p-8 max-w-7xl mx-auto w-full">
+        {/* The <Outlet /> is where the child components 
+            (Qualifications, TeamTree, etc.) will be rendered.
+        */}
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <Outlet />
+        </div>
+      </main>
+
+      {/* 3. FOOTER */}
+      <footer className="py-8 px-8 border-t bg-white/50 text-center">
+        <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.4em]">
+          Powered by Grass Link System
+        </p>
+      </footer>
     </div>
   );
 };

@@ -1,37 +1,64 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Member Features
 import Login from './features/auth/Login';
 import SignUp from './features/auth/SignUp';
-import UserDashboard from './features/dashboard/UserDashboard';
-import TeamTree from './features/dashboard/TeamTree';
+import DashboardLayout from './features/dashboard/DashboardLayout';
 import Qualifications from './features/dashboard/Qualifications';
-import AdminDashboard from './features/admin/AdminDashboard';
+import TeamTree from './features/dashboard/TeamTree';
+
+// Admin Features
 import AdminLogin from './features/admin/AdminLogin';
-import ProtectedRoute from './components/ProtectedRoute';
+import AdminDashboard from './features/admin/AdminDashboard';
 
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-slate-50">
-        <Routes>
-          {/* Member Side */}
-          <Route path="/" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
-          <Route path="/tree" element={<ProtectedRoute><TeamTree /></ProtectedRoute>} />
-          <Route path="/qualifications" element={<ProtectedRoute><Qualifications /></ProtectedRoute>} />
+      <Routes>
+        {/* PUBLIC ROUTES */}
+        <Route path="/" element={<Login />} />
+        <Route path="/signup" element={<SignUp />} />
 
-          {/* Admin Side */}
-          <Route path="/admin/auth" element={<AdminLogin />} />
-          <Route path="/admin" element={
+        {/* PROTECTED MEMBER ROUTES (Nested under DashboardLayout) */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          {/* This renders at /dashboard */}
+          <Route index element={
+            <div className="p-10 bg-white rounded-[2.5rem] shadow-xl border border-slate-100">
+              <h2 className="text-2xl font-black text-slate-900 uppercase">Member Overview</h2>
+              <p className="text-slate-400 font-bold uppercase text-[10px] mt-2 tracking-widest">Welcome to Grass International</p>
+            </div>
+          } />
+          
+          {/* This renders at /dashboard/qualifications */}
+          <Route path="qualifications" element={<Qualifications />} />
+          
+          {/* This renders at /dashboard/team */}
+          <Route path="team" element={<TeamTree />} />
+        </Route>
+
+        {/* ADMIN GATEWAY */}
+        <Route path="/admin/auth" element={<AdminLogin />} />
+        
+        {/* PROTECTED ADMIN DASHBOARD */}
+        <Route 
+          path="/admin" 
+          element={
             <ProtectedRoute isAdminRequired={true}>
               <AdminDashboard />
             </ProtectedRoute>
-          } />
+          } 
+        />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
+      </Routes>
     </Router>
   );
 }

@@ -1,16 +1,20 @@
-import React from 'react';
+import React, { type ReactNode } from 'react'; // Added the 'type' keyword
 import { Navigate } from 'react-router-dom';
 
-const ProtectedRoute = ({ children, isAdminRequired = false }: { children: React.ReactNode, isAdminRequired?: boolean }) => {
-  // Get the 'badge' from the browser's storage
+interface ProtectedRouteProps {
+  children: ReactNode;
+  isAdminRequired?: boolean;
+}
+
+const ProtectedRoute = ({ children, isAdminRequired = false }: ProtectedRouteProps) => {
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
-  // If no one is logged in, go to Member Login
-  if (!user) return <Navigate to="/" replace />;
-
-  // If it's an Admin page but the badge says 'distributor', kick them out
-  if (isAdminRequired && user.role !== 'admin') {
+  if (!user) {
     return <Navigate to="/" replace />;
+  }
+
+  if (isAdminRequired && user.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
