@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.jpeg';
 import { getMaintenanceRequirement, getRankBenefits } from './rankLogic';
-import DashboardLayout from './DashboardLayout';
+import DashboardLayout from '../../layouts/DashboardLayout'; // Corrected path
 import SkeletonLoader from './SkeletonLoader';
 
-const UserDashboard = () => {
+const MemberDashboard = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -62,15 +62,14 @@ const UserDashboard = () => {
         </aside>
 
         {/* MAIN CONTENT */}
-        <main className="flex-1 overflow-y-auto pb-24 md:pb-8">
-          {/* HEADER - collision fix included (md:mr-16) */}
+        <main className="flex-1 overflow-y-auto pb-24 md:pb-8 bg-slate-50">
           <header className="bg-white p-6 flex flex-col md:flex-row md:justify-between md:items-center border-b border-gray-100 sticky top-0 z-20">
             <div className="mb-4 md:mb-0">
               <h1 className="text-xl font-black uppercase tracking-tight" style={{ color: colors.navy }}>Hello, {user.name}</h1>
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-[0.3em]">ID: {user.cardNumber}</p>
             </div>
             
-            <div className={`px-5 py-3 rounded-2xl border flex flex-col items-end shadow-sm min-w-[220px] md:mr-16 transition-all`}
+            <div className={`px-5 py-3 rounded-2xl border flex flex-col items-end shadow-sm min-w-[220px] transition-all`}
                  style={{ 
                    backgroundColor: isQualified ? colors.lightGreen : '#fffbeb', 
                    borderColor: isQualified ? colors.green : '#f59e0b' 
@@ -113,7 +112,6 @@ const UserDashboard = () => {
                 <h2 className="text-4xl font-black mt-2" style={{ color: colors.navy }}>{user.groupPV}</h2>
               </div>
               
-              {/* RANK BENEFITS - Cleaner pills, no lines */}
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Rank {user.currentStar} Earnings</p>
                 <div className="space-y-3 text-[11px] font-black uppercase">
@@ -129,7 +127,7 @@ const UserDashboard = () => {
               </div>
             </div>
 
-            {/* LEGS SECTION - Detailed PV and Team Tracking */}
+            {/* LEGS SECTION */}
             <section className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Downline Leg Performance</h3>
@@ -180,4 +178,4 @@ const UserDashboard = () => {
   );
 };
 
-export default UserDashboard;
+export default MemberDashboard;
