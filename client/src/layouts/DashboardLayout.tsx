@@ -14,7 +14,7 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20 md:pb-0">
-      {/* Top Header / Notification Center */}
+      {/* Top Header Bell */}
       <div className="fixed top-6 right-6 z-[60] print:hidden">
         <button 
           onClick={() => setShowAlerts(!showAlerts)}
@@ -27,23 +27,21 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
         {showAlerts && (
           <div className="absolute right-0 mt-3 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 animate-in fade-in slide-in-from-top-2">
             <h3 className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Recent Activity</h3>
-            <div className="space-y-3">
-              <div className="text-[11px] font-bold p-2 bg-slate-50 rounded-lg border-l-4 border-green-500">
-                New member joined Leg C
-              </div>
+            <div className="space-y-3 text-[11px] font-bold p-2 bg-slate-50 rounded-lg border-l-4 border-green-500">
+              New member joined Leg C
             </div>
           </div>
         )}
       </div>
 
-      {/* Page Content */}
+      {/* Main Dynamic Content */}
       <div className="w-full">
         {children}
       </div>
 
       {/* MOBILE BOTTOM NAVIGATION */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-6 py-3 flex justify-between items-center md:hidden z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-        {/* Home Button */}
+        {/* Dashboard Button */}
         <button 
           onClick={() => navigate('/dashboard')} 
           className={`flex flex-col items-center transition-all ${location.pathname === '/dashboard' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}
@@ -52,7 +50,7 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
           <span className="text-[8px] font-black uppercase mt-1">Home</span>
         </button>
 
-        {/* Tree Button */}
+        {/* Team Tree Button */}
         <button 
           onClick={() => navigate('/tree')} 
           className={`flex flex-col items-center transition-all ${location.pathname === '/tree' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}
@@ -61,7 +59,7 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
           <span className="text-[8px] font-black uppercase mt-1">Tree</span>
         </button>
 
-        {/* Qualifications Button */}
+        {/* Qualifications Button - Linked to /rules */}
         <button 
           onClick={() => navigate('/rules')} 
           className={`flex flex-col items-center transition-all ${location.pathname === '/rules' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}
