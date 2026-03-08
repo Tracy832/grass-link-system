@@ -1,51 +1,36 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-// Auth Pages
+// Pages
 import MemberLogin from './features/member/MemberLogin';
 import SignUp from './features/member/SignUp';
 import AdminLogin from './features/admin/AdminLogin';
-
-// Dashboards
 import MemberDashboard from './features/member/MemberDashboard';
 import AdminDashboard from './features/admin/AdminDashboard';
+import TeamTree from './features/member/TeamTree';
+import Qualifications from './features/member/Qualifications';
 
-// Components & Layouts
+// Components
 import ProtectedRoute from './components/ProtectedRoute';
 
 const App: React.FC = () => {
   return (
     <Routes>
-      {/* 1. PUBLIC ROUTES */}
+      {/* Auth */}
       <Route path="/login" element={<MemberLogin />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/admin/auth" element={<AdminLogin />} />
 
-      {/* 2. MEMBER PROTECTED ROUTES */}
-      <Route 
-        path="/dashboard" 
-        element={
-          <ProtectedRoute roleRequired="member">
-            <MemberDashboard />
-          </ProtectedRoute>
-        } 
-      />
+      {/* Member Routes */}
+      <Route path="/dashboard" element={<ProtectedRoute roleRequired="member"><MemberDashboard /></ProtectedRoute>} />
+      <Route path="/tree" element={<ProtectedRoute roleRequired="member"><TeamTree /></ProtectedRoute>} />
+      <Route path="/qualifications" element={<ProtectedRoute roleRequired="member"><Qualifications /></ProtectedRoute>} />
 
-      {/* 3. ADMIN PROTECTED ROUTES */}
-      <Route 
-        path="/admin" 
-        element={
-          <ProtectedRoute roleRequired="admin">
-            <AdminDashboard />
-          </ProtectedRoute>
-        } 
-      />
+      {/* Admin Routes */}
+      <Route path="/admin" element={<ProtectedRoute roleRequired="admin"><AdminDashboard /></ProtectedRoute>} />
 
-      {/* 4. DEFAULT REDIRECTS */}
-      {/* Send root to login */}
+      {/* Redirects */}
       <Route path="/" element={<Navigate to="/login" replace />} />
-      
-      {/* Fallback for 404s */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );

@@ -7,22 +7,24 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roleRequired }) => {
-  // 1. Check if user is logged in (using localStorage for now)
+  // 1. Read the "ID Card" from the browser
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
   const userRole = localStorage.getItem('userRole'); // 'admin' or 'member'
 
-  // 2. If not logged in, send to login page
+  // 2. If NO ID card is found, kick them to the correct login page
   if (!isAuthenticated) {
-    const redirectPath = roleRequired === 'admin' ? '/admin/auth' : '/login';
-    return <Navigate to={redirectPath} replace />;
+    const loginPath = roleRequired === 'admin' ? '/admin/auth' : '/login';
+    return <Navigate to={loginPath} replace />;
   }
 
-  // 3. If logged in but wrong role, send to their respective home
+  // 3. If they have a Member ID but try to enter the Admin door (or vice versa)
   if (roleRequired && userRole !== roleRequired) {
-    return <Navigate to={userRole === 'admin' ? '/admin' : '/dashboard'} replace />;
+    // Send them back to their own home base
+    const fallback = userRole === 'admin' ? '/admin' : '/dashboard';
+    return <Navigate to={fallback} replace />;
   }
 
-  // 4. Everything is fine, show the page
+  // 4. Everything looks good! Let them in.
   return <>{children}</>;
 };
 
