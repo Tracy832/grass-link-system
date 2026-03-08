@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // Using Link for better performance
+import { useNavigate, Link } from 'react-router-dom';
 import logo from '../../assets/logo.jpeg';
 import supplementsBg from '../../assets/suplements.jpeg';
 
@@ -10,8 +10,12 @@ const SignUp: React.FC = () => {
   const handleSignUp = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    console.log("Creating Account...");
 
-    // Simulate account creation delay
+    // Set local session for testing
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('userRole', 'member');
+
     setTimeout(() => {
       navigate('/dashboard');
     }, 1500);

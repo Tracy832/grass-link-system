@@ -8,7 +8,12 @@ const MemberLogin: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Later: Add logic to check credentials against your Django backend
+    console.log("Login Attempted");
+    
+    // For now, we set these so ProtectedRoute lets us in
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('userRole', 'member');
+    
     navigate('/dashboard'); 
   };
 
@@ -21,10 +26,11 @@ const MemberLogin: React.FC = () => {
         
         <div className="text-center mb-8">
           <img src={logo} alt="Logo" className="w-16 h-16 object-contain mb-4 mx-auto drop-shadow-sm rounded-full" />
-          <h2 className="text-xl font-bold text-green-900 tracking-tight">Welcome Back!</h2>
-          <p className="text-[10px] text-green-800/60 font-semibold tracking-widest mt-1 uppercase">Log in to your account</p>
+          <h2 className="text-xl font-bold text-green-900 tracking-tight text-center">Welcome Back!</h2>
+          <p className="text-[10px] text-green-800/60 font-semibold tracking-widest mt-1 uppercase text-center">Log in to your account</p>
         </div>
 
+        {/* The onSubmit here is what makes the button work */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="group">
             <label className="text-[10px] font-bold text-green-900 uppercase ml-1 opacity-60">Email Address</label>
