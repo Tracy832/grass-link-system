@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import logo from '../../assets/logo.jpeg';
 import { getMaintenanceRequirement, getRankBenefits } from './rankLogic';
 import DashboardLayout from '../../layouts/DashboardLayout';
 import SkeletonLoader from './SkeletonLoader';
@@ -18,7 +17,6 @@ const MemberDashboard: React.FC = () => {
     lightGreen: '#f0fdf4',
   };
 
-  // Mock User Data - Updated to use the Dynamic Name
   const user = {
     name: currentUserName, 
     currentStar: 3, 
@@ -46,25 +44,8 @@ const MemberDashboard: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen flex text-slate-900 bg-slate-50">
-        {/* SIDEBAR - Desktop Only */}
-        <aside className="w-64 text-white hidden md:flex flex-col shadow-2xl shrink-0" style={{ backgroundColor: colors.navy }}>
-          <div className="p-8 border-b border-white/10 flex flex-col items-center">
-            <div className="bg-white p-1 rounded-full mb-4 shadow-lg">
-              <img src={logo} alt="Logo" className="w-20 h-20 rounded-full object-cover" />
-            </div>
-            <h2 className="text-xs font-black tracking-widest leading-tight uppercase text-center">
-              Grass <br/> <span style={{ color: colors.green }}>International</span>
-            </h2>
-          </div>
-          <nav className="flex-1 p-4 mt-4 space-y-2">
-            <button onClick={() => navigate('/dashboard')} className="w-full text-left px-4 py-3 rounded-xl text-[11px] font-black uppercase bg-white/10 border-l-4" style={{ borderColor: colors.green }}>Dashboard</button>
-            <button onClick={() => navigate('/tree')} className="w-full text-left px-4 py-3 hover:bg-white/5 rounded-xl text-[11px] font-black uppercase opacity-60">My Team Tree</button>
-            <button onClick={() => navigate('/qualifications')} className="w-full text-left px-4 py-3 hover:bg-white/5 rounded-xl text-[11px] font-black uppercase opacity-60">Qualifications</button>
-          </nav>
-        </aside>
-
-        {/* MAIN CONTENT */}
+      {/* We REMOVED the <aside> Sidebar from here because DashboardLayout already has it! */}
+      <div className="min-h-screen text-slate-900 bg-slate-50">
         <main className="flex-1 overflow-y-auto pb-24 md:pb-8">
           <header className="bg-white p-6 flex flex-col md:flex-row md:justify-between md:items-center border-b border-gray-100 sticky top-0 z-20">
             <div className="mb-4 md:mb-0">
