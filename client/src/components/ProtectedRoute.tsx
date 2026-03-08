@@ -7,24 +7,30 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roleRequired }) => {
-  // 1. Read the "ID Card" from the browser
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-  const userRole = localStorage.getItem('userRole'); // 'admin' or 'member'
+  const authValue = localStorage.getItem('isAuthenticated');
+  const isAuthenticated = authValue === 'true';
+  const userRole = localStorage.getItem('userRole') as 'admin' | 'member' | null;
 
-  // 2. If NO ID card is found, kick them to the correct login page
+  // DEBUGGING: Open your browser console (F12) to see these
+  console.log("--- GUARD CHECK ---");
+  console.log("Auth in Storage:", authValue);
+  console.log("User Role:", userRole);
+  console.log("Page Requires:", roleRequired);
+
+  // 2. If NO ID card is found
   if (!isAuthenticated) {
+    console.warn("GUARD: Not authenticated. Redirecting to login.");
     const loginPath = roleRequired === 'admin' ? '/admin/auth' : '/login';
     return <Navigate to={loginPath} replace />;
   }
 
-  // 3. If they have a Member ID but try to enter the Admin door (or vice versa)
+  // 3. Role Mismatch
   if (roleRequired && userRole !== roleRequired) {
-    // Send them back to their own home base
+    console.warn(`GUARD: Role mismatch. User is ${userRole}, but page needs ${roleRequired}.`);
     const fallback = userRole === 'admin' ? '/admin' : '/dashboard';
     return <Navigate to={fallback} replace />;
   }
 
-  // 4. Everything looks good! Let them in.
   return <>{children}</>;
 };
 
