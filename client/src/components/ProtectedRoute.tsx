@@ -9,17 +9,17 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roleRequired }) => {
   const location = useLocation();
   
-  // We check for the token and the role
-  const token = localStorage.getItem('userToken');
+  // We check for both Token OR the old isAuthenticated string to be safe
+  const token = localStorage.getItem('userToken') || localStorage.getItem('isAuthenticated');
   const userRole = localStorage.getItem('userRole');
 
-  // If there is no token, they aren't logged in
+  // If there is no token/auth, they aren't logged in
   if (!token) {
     const loginPath = roleRequired === 'admin' ? '/admin/auth' : '/login';
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
-  // If they have a token but the wrong role
+  // Role Mismatch check
   if (roleRequired && userRole !== roleRequired) {
     const fallback = userRole === 'admin' ? '/admin' : '/dashboard';
     return <Navigate to={fallback} replace />;

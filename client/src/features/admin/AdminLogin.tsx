@@ -8,8 +8,8 @@ const AdminLogin: React.FC = () => {
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Set Admin specific session
-    localStorage.setItem('isAuthenticated', 'true');
+    // MATCHING THE PROTECTED ROUTE REQUIREMENTS:
+    localStorage.setItem('userToken', 'admin_access_token_2026'); // Added this
     localStorage.setItem('userRole', 'admin');
     localStorage.setItem('userName', 'System Admin');
 
