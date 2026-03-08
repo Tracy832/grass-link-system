@@ -16,20 +16,38 @@ import ProtectedRoute from './components/ProtectedRoute';
 const App: React.FC = () => {
   return (
     <Routes>
-      {/* Auth */}
+      {/* Public Routes */}
       <Route path="/login" element={<MemberLogin />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/admin/auth" element={<AdminLogin />} />
 
-      {/* Member Routes */}
-      <Route path="/dashboard" element={<ProtectedRoute roleRequired="member"><MemberDashboard /></ProtectedRoute>} />
-      <Route path="/tree" element={<ProtectedRoute roleRequired="member"><TeamTree /></ProtectedRoute>} />
-      <Route path="/qualifications" element={<ProtectedRoute roleRequired="member"><Qualifications /></ProtectedRoute>} />
+      {/* Member Routes - All protected by 'member' role */}
+      <Route path="/dashboard" element={
+        <ProtectedRoute roleRequired="member">
+          <MemberDashboard />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/tree" element={
+        <ProtectedRoute roleRequired="member">
+          <TeamTree />
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/rules" element={
+        <ProtectedRoute roleRequired="member">
+          <Qualifications />
+        </ProtectedRoute>
+      } />
 
       {/* Admin Routes */}
-      <Route path="/admin" element={<ProtectedRoute roleRequired="admin"><AdminDashboard /></ProtectedRoute>} />
+      <Route path="/admin" element={
+        <ProtectedRoute roleRequired="admin">
+          <AdminDashboard />
+        </ProtectedRoute>
+      } />
 
-      {/* Redirects */}
+      {/* Redirects: If a path doesn't exist, send to login */}
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
