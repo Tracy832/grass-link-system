@@ -9,13 +9,13 @@ const MemberLogin: React.FC = () => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Set the session
-    localStorage.setItem('isAuthenticated', 'true');
+    // 1. Create a "Fake" token for now (In the future, this comes from Django)
+    localStorage.setItem('userToken', 'grass_international_session_abc123');
     localStorage.setItem('userRole', 'member');
     
-    // If no name exists from signup, set a default
+    // Set default name if not present
     if (!localStorage.getItem('userName')) {
-      localStorage.setItem('userName', 'Member');
+      localStorage.setItem('userName', 'Valued Member');
     }
     
     navigate('/dashboard'); 
@@ -24,21 +24,19 @@ const MemberLogin: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-cover bg-center p-4"
       style={{ backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${supplementsBg})` }}>
-      <div className="bg-white/70 backdrop-blur-lg p-8 rounded-3xl shadow-2xl w-full max-w-xs border border-white/30 relative overflow-hidden">
+      <div className="bg-white/70 backdrop-blur-lg p-8 rounded-3xl shadow-2xl w-full max-w-xs border border-white/30">
         <div className="text-center mb-8">
-          <img src={logo} alt="Logo" className="w-16 h-16 object-contain mb-4 mx-auto drop-shadow-sm rounded-full" />
-          <h2 className="text-xl font-bold text-green-900 tracking-tight">Welcome Back!</h2>
-          <p className="text-[10px] text-green-800/60 font-semibold tracking-widest mt-1 uppercase">Log in to your account</p>
+          <img src={logo} alt="Logo" className="w-16 h-16 object-contain mb-4 mx-auto rounded-full" />
+          <h2 className="text-xl font-bold text-green-900 tracking-tight text-center">Member Login</h2>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
-          <input type="email" required placeholder="email@example.com" className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-gray-800" />
-          <input type="password" required placeholder="Enter Card No" className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-gray-800" />
-          <button type="submit" className="w-full bg-green-700 text-white py-3 rounded-xl font-bold hover:bg-green-800 transition-all text-xs shadow-lg active:scale-95">LOG IN</button>
+          <input required type="email" placeholder="Email Address" className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl outline-none" />
+          <input required type="password" placeholder="Card Number" className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl outline-none" />
+          <button type="submit" className="w-full bg-green-700 text-white py-3 rounded-xl font-bold hover:bg-green-800 transition-all text-xs shadow-lg">LOG IN</button>
         </form>
-
-        <div className="mt-8 text-center">
-          <p className="text-[11px] text-gray-600">Don't have an account? <Link to="/signup" className="ml-1 text-green-800 font-bold hover:underline">Sign Up</Link></p>
+        <div className="mt-8 text-center text-[11px] text-gray-600">
+          New here? <Link to="/signup" className="text-green-800 font-bold hover:underline">Sign Up</Link>
         </div>
       </div>
     </div>
