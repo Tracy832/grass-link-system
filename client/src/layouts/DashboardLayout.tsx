@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import logo from '../../assets/logo.jpeg';
+import logo from '../assets/logo.jpeg';
 
 interface LayoutProps {
   children: React.ReactNode;
