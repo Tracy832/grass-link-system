@@ -1,33 +1,48 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logo from '../../assets/logo.jpeg';
-import supplementsBg from '../../assets/suplements.jpeg';
+// Note: Make sure the path to your image is correct!
+import supplementsBg from '../../assets/suplements.jpeg'; 
+import { apiClient } from '../../services/api';
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  // Form State
+  // 1. Added phone to the state
   const [formData, setFormData] = useState({
     username: '',
     email: '',
+    phone: '', 
     cardNumber: ''
   });
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
 
-    // Save all details to session
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userRole', 'member');
-    localStorage.setItem('userName', formData.username);
-    localStorage.setItem('userEmail', formData.email);
+    try {
+      // 2. Send data to the FastAPI registration endpoint
+      await apiClient('/distributors/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          full_name: formData.username, 
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.cardNumber 
+        })
+      });
 
-    // Simulate creation delay
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 1500);
+      // 3. On success, send them to the login page to authenticate
+      navigate('/login');
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to create account. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -40,16 +55,23 @@ const SignUp: React.FC = () => {
           <h2 className="text-xl font-bold text-green-900 leading-tight text-center">Join <br/> Grass International</h2>
         </div>
 
+        {/* Display backend errors */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50/90 border-l-4 border-red-500 text-red-700 text-[10px] font-bold uppercase tracking-widest rounded-r-xl">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSignUp} className="space-y-4">
-          {/* USERNAME */}
+          {/* USERNAME / FULL NAME */}
           <div className="group">
-            <label className="text-[10px] font-bold text-green-900 uppercase ml-1 opacity-60">Username</label>
+            <label className="text-[10px] font-bold text-green-900 uppercase ml-1 opacity-60">Full Name</label>
             <input 
               required
               type="text" 
               value={formData.username}
               onChange={(e) => setFormData({...formData, username: e.target.value})}
-              placeholder="Business Name" 
+              placeholder="Business or Full Name" 
               className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-gray-800" 
             />
           </div>
@@ -67,15 +89,28 @@ const SignUp: React.FC = () => {
             />
           </div>
 
-          {/* CARD NUMBER (PASSWORD) */}
+          {/* PHONE (NEW) */}
           <div className="group">
-            <label className="text-[10px] font-bold text-green-900 uppercase ml-1 opacity-60">Card Number (Password)</label>
+            <label className="text-[10px] font-bold text-green-900 uppercase ml-1 opacity-60">Phone Number</label>
+            <input 
+              required
+              type="tel" 
+              value={formData.phone}
+              onChange={(e) => setFormData({...formData, phone: e.target.value})}
+              placeholder="+254..." 
+              className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-gray-800" 
+            />
+          </div>
+
+          {/* PASSWORD */}
+          <div className="group">
+            <label className="text-[10px] font-bold text-green-900 uppercase ml-1 opacity-60">Access Key (Password)</label>
             <input 
               required
               type="password" 
               value={formData.cardNumber}
               onChange={(e) => setFormData({...formData, cardNumber: e.target.value})}
-              placeholder="GI-XXXX-2026" 
+              placeholder="Create a strong password" 
               className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-gray-800" 
             />
           </div>
@@ -83,14 +118,14 @@ const SignUp: React.FC = () => {
           <button 
             type="submit" 
             disabled={isSubmitting} 
-            className="w-full py-3 rounded-xl font-bold text-xs shadow-lg mt-4 text-white bg-green-700 hover:bg-green-800 transition-all active:scale-95"
+            className="w-full py-3 rounded-xl font-bold text-xs shadow-lg mt-4 text-white bg-green-700 hover:bg-green-800 transition-all active:scale-95 disabled:opacity-50"
           >
             {isSubmitting ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
           </button>
         </form>
 
-        <p className="mt-8 text-center text-[11px] text-gray-600">
-          Already a member? <Link to="/login" className="text-green-800 font-bold hover:underline">Log In</Link>
+        <p className="mt-8 text-center text-[11px] text-gray-800 font-medium">
+          Already a member? <Link to="/login" className="text-green-900 font-black hover:underline">Log In</Link>
         </p>
       </div>
     </div>
