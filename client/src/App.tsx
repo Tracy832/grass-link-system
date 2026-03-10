@@ -7,6 +7,7 @@ import MemberDashboard from './features/member/MemberDashboard';
 import AdminDashboard from './features/admin/AdminDashboard';
 import TeamTree from './features/member/TeamTree';
 import Qualifications from './features/member/Qualifications';
+import MemberProfile from './features/member/MemberProfile'; // 1. Imported the new profile component
 import ProtectedRoute from './components/ProtectedRoute';
 
 const App: React.FC = () => {
@@ -20,6 +21,9 @@ const App: React.FC = () => {
       <Route path="/dashboard" element={<ProtectedRoute roleRequired="member"><MemberDashboard /></ProtectedRoute>} />
       <Route path="/tree" element={<ProtectedRoute roleRequired="member"><TeamTree /></ProtectedRoute>} />
       <Route path="/qualifications" element={<ProtectedRoute roleRequired="member"><Qualifications /></ProtectedRoute>} />
+      
+      {/* 2. Added the protected profile route */}
+      <Route path="/profile" element={<ProtectedRoute roleRequired="member"><MemberProfile /></ProtectedRoute>} />
 
       <Route path="/admin" element={<ProtectedRoute roleRequired="admin"><AdminDashboard /></ProtectedRoute>} />
 
