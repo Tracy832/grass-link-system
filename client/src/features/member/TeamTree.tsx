@@ -1,41 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SkeletonLoader from './SkeletonLoader';
+import { apiClient } from '../../services/api';
 
 const TeamTree = () => {
   const navigate = useNavigate();
   const [zoom, setZoom] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [treeData, setTreeData] = useState<any>(null);
 
   const colors = { navy: '#1d3557', green: '#03ac13' };
 
-  const user = { name: "Tracy Kibue", currentStar: 3, ppv: 1200, gpv: 4295 };
-
-  const legs = [
-    { 
-      name: "John Doe", rank: 2, leg: "A", ppv: 950, gpv: 1155,
-      team: [
-        { name: "Alice Mwangi", rank: 1, ppv: 120, gpv: 120 },
-        { name: "Peter Kamau", rank: 1, ppv: 85, gpv: 85 }
-      ]
-    },
-    { 
-      name: "Sarah Wanjiku", rank: 2, leg: "B", ppv: 980, gpv: 1540,
-      team: [
-        { name: "Grace Njeri", rank: 2, ppv: 450, gpv: 450 },
-        { name: "David Otieno", rank: 1, ppv: 110, gpv: 110 }
-      ]
-    },
-    { 
-      name: "Kevin Otieno", rank: 2, leg: "C", ppv: 400, gpv: 400, team: [] 
-    },
-  ];
-
+  // 1. Fetch live downline data
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchTree = async () => {
+      try {
+        // Fetching from the dashboard endpoint (or a specific tree endpoint if you create one)
+        const data = await apiClient('/distributors/my-dashboard', {
+          method: 'GET'
+        });
+        setTreeData(data);
+      } catch (err: any) {
+        setError(err.message || "Failed to load genealogy tree.");
+        if (err.message.includes('401') || err.message.includes('Unauthorized')) {
+          localStorage.clear();
+          navigate('/login');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTree();
+  }, [navigate]);
 
   // PRINT FUNCTION
   const handlePrint = () => {
@@ -46,6 +45,36 @@ const TeamTree = () => {
     searchTerm !== "" && name.toLowerCase().includes(searchTerm.toLowerCase());
 
   if (isLoading) return <SkeletonLoader />;
+
+  // 2. Helper to parse Enum strings (e.g., "STAR_3") into numbers
+  const parseStarLevel = (starString: string) => {
+    if (!starString) return 0;
+    const match = starString.match(/\d+/);
+    return match ? parseInt(match[0], 10) : 0;
+  };
+
+  // 3. Map the live data to the exact structure your UI expects
+  const user = { 
+    name: treeData?.full_name || "Valued Member", 
+    currentStar: parseStarLevel(treeData?.star_level), 
+    ppv: treeData?.personal_pv || 0, 
+    gpv: treeData?.group_pv || 0 
+  };
+
+  // 4. Dynamically map downlines and assign Leg letters (A, B, C...)
+  const legs = (treeData?.downlines || []).map((member: any, idx: number) => ({
+    name: member.full_name || "Unknown Distributor",
+    rank: parseStarLevel(member.star_level),
+    leg: String.fromCharCode(65 + idx), // Converts 0 -> A, 1 -> B, 2 -> C
+    ppv: member.personal_pv || 0,
+    gpv: member.group_pv || 0,
+    team: (member.downlines || []).map((sub: any) => ({
+      name: sub.full_name || "Unknown Distributor",
+      rank: parseStarLevel(sub.star_level),
+      ppv: sub.personal_pv || 0,
+      gpv: sub.group_pv || 0,
+    }))
+  }));
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -89,6 +118,13 @@ const TeamTree = () => {
         </div>
       </header>
 
+      {/* ERROR BANNER */}
+      {error && (
+        <div className="bg-red-500 text-white text-xs font-bold p-3 text-center tracking-widest uppercase print:hidden">
+          {error}
+        </div>
+      )}
+
       {/* TREE CANVAS */}
       <div className="flex-1 overflow-auto p-12 print:p-0">
         <div className="transition-transform duration-300 origin-top flex flex-col items-center" style={{ transform: `scale(${zoom})` }}>
@@ -109,54 +145,62 @@ const TeamTree = () => {
               </div>
               <span className="px-4 py-1 rounded-full text-[9px] font-black text-white bg-[#1d3557]">Star {user.currentStar}</span>
             </div>
-            <div className="h-10 w-1 bg-slate-300"></div>
+            
+            {/* Connecting Line below YOU (only if there are legs) */}
+            {legs.length > 0 && <div className="h-10 w-1 bg-slate-300"></div>}
           </div>
 
           {/* LEVEL 2: LEGS */}
-          <div className="flex justify-center gap-8 relative">
-            <div className="absolute top-0 left-[20%] right-[20%] h-1 bg-slate-300"></div>
-            {legs.map((member, idx) => (
-              <div key={idx} className="flex flex-col items-center min-w-[260px]">
-                <div className="h-8 w-1 bg-slate-300"></div>
-                <div className={`bg-white p-4 rounded-2xl shadow-md border-b-4 w-full text-center transition-all ${isMatch(member.name) ? 'ring-4 ring-yellow-400 scale-105' : ''}`} style={{ borderBottomColor: colors.green }}>
-                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1 tracking-tighter italic">Leg {member.leg}</p>
-                  <h3 className="text-sm font-black mb-2" style={{ color: colors.navy }}>{member.name}</h3>
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-                      <p className="text-[7px] font-bold text-slate-400">PPV: {member.ppv}</p>
+          {legs.length > 0 ? (
+            <div className="flex justify-center gap-8 relative">
+              <div className="absolute top-0 left-[20%] right-[20%] h-1 bg-slate-300"></div>
+              {legs.map((member: any, idx: number) => (
+                <div key={idx} className="flex flex-col items-center min-w-[260px]">
+                  <div className="h-8 w-1 bg-slate-300"></div>
+                  <div className={`bg-white p-4 rounded-2xl shadow-md border-b-4 w-full text-center transition-all ${isMatch(member.name) ? 'ring-4 ring-yellow-400 scale-105' : ''}`} style={{ borderBottomColor: colors.green }}>
+                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1 tracking-tighter italic">Leg {member.leg}</p>
+                    <h3 className="text-sm font-black mb-2" style={{ color: colors.navy }}>{member.name}</h3>
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                        <p className="text-[7px] font-bold text-slate-400">PPV: {member.ppv}</p>
+                      </div>
+                      <div className="bg-green-50 p-1.5 rounded-lg border border-green-100">
+                        <p className="text-[7px] font-black text-green-600">GPV: {member.gpv}</p>
+                      </div>
                     </div>
-                    <div className="bg-green-50 p-1.5 rounded-lg border border-green-100">
-                      <p className="text-[7px] font-black text-green-600">GPV: {member.gpv}</p>
-                    </div>
+                    <span className="px-3 py-0.5 rounded-md text-[8px] font-black text-white" style={{ backgroundColor: colors.navy }}>Star {member.rank}</span>
                   </div>
-                  <span className="px-3 py-0.5 rounded-md text-[8px] font-black text-white" style={{ backgroundColor: colors.navy }}>Star {member.rank}</span>
-                </div>
 
-                {/* LEVEL 3: DOWNLINES */}
-                {member.team.length > 0 && (
-                  <>
-                    <div className="h-6 w-1 bg-slate-300"></div>
-                    <div className="flex gap-4 relative">
-                      <div className="absolute top-0 left-[25%] right-[25%] h-0.5 bg-slate-200"></div>
-                      {member.team.map((sub, sIdx) => (
-                        <div key={sIdx} className="flex flex-col items-center">
-                          <div className="h-4 w-0.5 bg-slate-200"></div>
-                          <div className={`bg-white p-3 rounded-xl border border-slate-100 w-36 text-center shadow-sm ${isMatch(sub.name) ? 'ring-4 ring-yellow-400 scale-105' : ''}`}>
-                            <p className="text-[10px] font-black text-slate-700 leading-tight mb-1">{sub.name}</p>
-                            <div className="flex flex-col gap-0.5 text-[8px] font-bold mb-2">
-                              <span className="text-slate-400">PPV: {sub.ppv}</span>
-                              <span className="text-green-600 font-black tracking-tight">GPV: {sub.gpv}</span>
+                  {/* LEVEL 3: DOWNLINES */}
+                  {member.team && member.team.length > 0 && (
+                    <>
+                      <div className="h-6 w-1 bg-slate-300"></div>
+                      <div className="flex gap-4 relative">
+                        <div className="absolute top-0 left-[25%] right-[25%] h-0.5 bg-slate-200"></div>
+                        {member.team.map((sub: any, sIdx: number) => (
+                          <div key={sIdx} className="flex flex-col items-center">
+                            <div className="h-4 w-0.5 bg-slate-200"></div>
+                            <div className={`bg-white p-3 rounded-xl border border-slate-100 w-36 text-center shadow-sm ${isMatch(sub.name) ? 'ring-4 ring-yellow-400 scale-105' : ''}`}>
+                              <p className="text-[10px] font-black text-slate-700 leading-tight mb-1">{sub.name}</p>
+                              <div className="flex flex-col gap-0.5 text-[8px] font-bold mb-2">
+                                <span className="text-slate-400">PPV: {sub.ppv}</span>
+                                <span className="text-green-600 font-black tracking-tight">GPV: {sub.gpv}</span>
+                              </div>
+                              <span className="px-2 py-0.5 rounded bg-green-500 text-white text-[7px] font-black">Star {sub.rank}</span>
                             </div>
-                            <span className="px-2 py-0.5 rounded bg-green-500 text-white text-[7px] font-black">Star {sub.rank}</span>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-8 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">
+              No downlines yet. Start recruiting to grow your tree!
+            </div>
+          )}
         </div>
       </div>
     </div>
