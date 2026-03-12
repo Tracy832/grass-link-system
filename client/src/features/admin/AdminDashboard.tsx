@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.jpeg';
 
@@ -8,36 +8,15 @@ import ProductCatalog from './components/ProductCatalog';
 import InventoryAlerts from './components/InventoryAlerts';
 import InventoryTable from './components/InventoryTable';
 import StkPush from './components/StkPush';
-import CreditManagement from './components/CreditManagement'; // Added
+import CreditManagement from './components/CreditManagement';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('inventory'); // Starting on inventory to test
+  const [activeTab, setActiveTab] = useState('inventory'); 
   const [searchQuery, setSearchQuery] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 1. DATA STATE
-  const [users] = useState([
-    { name: "Tracy Kibue", id: "GI-001", email: "tracy@gmail.com", star: 3, ppv: 1250, gpv: 8450 },
-    { name: "Baraka Roney", id: "GI-002", email: "baraka@gmail.com", star: 2, ppv: 900, gpv: 4200 },
-  ]);
-
-  const [inventory] = useState([
-    { name: "Co-enzyme tablets", stock: 120, dist: 2500, pv: 20, type: 'supplement' },
-    { name: "Cordycep tablets", stock: 15, dist: 2500, pv: 20, type: 'supplement' },
-    { name: "Big reflexology machine", stock: 1, dist: 75000, pv: 600, type: 'machine' },
-    { name: "Massage chair", stock: 1, dist: 625000, pv: 5000, type: 'chair' },
-  ]);
-
-  // 2. LOGIC
-  const lowStockProducts = useMemo(() => {
-    return inventory.filter(item => {
-      if (item.type === 'supplement' && item.stock < 50) return true;
-      if (item.type === 'machine' && item.stock < 2) return true;
-      if (item.type === 'chair' && item.stock < 1) return true;
-      return false;
-    });
-  }, [inventory]);
+  // 🧹 All dummy users, inventory, and modal states have been deleted!
+  // The components are now smart enough to handle their own live data.
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col relative">
@@ -45,7 +24,7 @@ const AdminDashboard = () => {
         <h1 className="text-[10vw] font-black uppercase text-slate-300 transform -rotate-12 tracking-[0.2em]">Grass International</h1>
       </div>
 
-      <header className="bg-white px-8 py-3 border-b flex justify-between items-center sticky top-0 z-50 shadow-sm relative">
+      <header className="bg-white px-8 py-3 border-b flex justify-between items-center sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <img src={logo} alt="Logo" className="w-10 h-10 rounded-full object-cover border" />
           <div className="leading-tight">
@@ -71,20 +50,22 @@ const AdminDashboard = () => {
       </div>
 
       <main className="flex-1 px-8 pb-12 relative">
-        {activeTab === 'users' && <UserTable users={users} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
-        {activeTab === 'products' && <ProductCatalog onOpenModal={() => setIsModalOpen(true)} />}
+        {activeTab === 'users' && <UserTable searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
         
-        {/* INVENTORY VIEW */}
+        {activeTab === 'products' && <ProductCatalog />}
+        
         {activeTab === 'inventory' && (
           <div className="space-y-10 animate-in fade-in duration-500">
-            <InventoryAlerts lowStockItems={lowStockProducts} />
-            <InventoryTable inventory={inventory} onOpenModal={() => setIsModalOpen(true)} />
+            {/* We pass an empty array here temporarily so it doesn't crash before we upgrade it */}
+            <InventoryAlerts lowStockItems={[]} />
+            
+            
+            <InventoryTable />
           </div>
         )}
 
         {activeTab === 'STK push' && <StkPush />}
         
-        {/* CREDIT VIEW */}
         {activeTab === 'credit' && <CreditManagement />}
       </main>
     </div>
