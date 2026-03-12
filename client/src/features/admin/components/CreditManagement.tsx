@@ -1,142 +1,255 @@
-import React, { useState, type ReactNode } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiClient } from '../../../services/api';
+import { PackageOpen, AlertCircle, CheckCircle2, CalendarDays, Receipt, ShieldAlert, FileText } from 'lucide-react';
 
-interface CreditItem {
-  name: string;
-  products: string;
-  total: number;
-  date: string;
-  status: string;
-}
+const CreditManagement: React.FC = () => {
+  // --- UI STATE ---
+  const [activeTab, setActiveTab] = useState<'consignment' | 'reconciliation'>('consignment');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetchingProducts, setIsFetchingProducts] = useState(true); // <-- ADDED THIS
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-const CreditManagement = () => {
-  const [credits, setCredits] = useState<CreditItem[]>([
-    { name: "Tracy Kibue", products: "Big Massage Gun", total: 10000, date: "2026-03-07", status: "Pending" },
-    { name: "Baraka Roney", products: "Pure Ginseng (x2)", total: 5000, date: "2026-03-06", status: "Pending" },
-  ]);
+  const colors = { navy: '#1d3557', green: '#03ac13', orange: '#f59e0b', red: '#dc2626' };
 
-  // Modal State
-  const [modal, setModal] = useState<{ isOpen: boolean; type: 'paid' | 'return' | null; data: CreditItem | null }>({
-    isOpen: false,
-    type: null,
-    data: null
-  });
+  // --- DYNAMIC PRODUCTS STATE ---
+  const [products, setProducts] = useState<any[]>([]);
 
-  const [message, setMessage] = useState<string | null>(null);
+  // --- CONSIGNMENT STATE ---
+  const [consignmentEmail, setConsignmentEmail] = useState('');
+  const [productId, setProductId] = useState('');
+  const [quantity, setQuantity] = useState('1');
+  const [dueDate, setDueDate] = useState('');
 
-  const openModal = (type: 'paid' | 'return', item: CreditItem) => {
-    setModal({ isOpen: true, type, data: item });
+  // --- RECONCILIATION STATE ---
+  const [reconEmail, setReconEmail] = useState('');
+  const [reconPv, setReconPv] = useState('');
+  const [reconReceipt, setReconReceipt] = useState('');
+  const [reconMessage, setReconMessage] = useState('');
+
+  // FETCH PRODUCTS ON LOAD
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsFetchingProducts(true);
+      try {
+        const data = await apiClient('/products/', { method: 'GET' });
+        
+        //  DEVELOPER DEBUG: Check your browser console (F12) to see this!
+        console.log("RAW PRODUCT DATA FROM BACKEND:", data);
+
+        const extractedProducts = Array.isArray(data) ? data : (data.items || data.products || data.data || []);
+        setProducts(extractedProducts);
+      } catch (err) {
+        console.error("Failed to load products from database", err);
+      } finally {
+        setIsFetchingProducts(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  // --- HANDLERS ---
+  const handleIssueConsignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true); setError(null); setSuccess(null);
+    try {
+      await apiClient('/consignments/issue', {
+        method: 'POST',
+        body: JSON.stringify({
+          distributor_email: consignmentEmail, 
+          product_id: parseInt(productId),
+          quantity: parseInt(quantity),
+          due_date: dueDate
+        })
+      });
+      
+      const selectedProduct = products.find(p => p.id === parseInt(productId));
+      setSuccess(`Success: ${quantity}x ${selectedProduct?.name || 'Product'} issued on credit to ${consignmentEmail}.`);
+      setConsignmentEmail(''); setProductId(''); setQuantity('1'); setDueDate('');
+    } catch (err: any) {
+      setError(err.message || "Failed to issue consignment.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const closeModal = () => {
-    setModal({ isOpen: false, type: null, data: null });
-  };
-
-  const handleConfirm = () => {
-    if (!modal.data) return;
-    
-    const actionText = modal.type === 'paid' ? 'marked as PAID' : 'marked as RETURNED';
-    setMessage(`Success: Transaction for ${modal.data.name} has been ${actionText}.`);
-    
-    // Auto-hide message after 3 seconds
-    setTimeout(() => setMessage(null), 3000);
-    closeModal();
+  const handleReconciliation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true); setError(null); setSuccess(null);
+    try {
+      await apiClient('/distributors/admin/reconcile-payment', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: reconEmail, 
+          pv_amount: parseFloat(reconPv),
+          mpesa_receipt_number: reconReceipt.trim().toUpperCase(),
+          payment_message: reconMessage.trim()
+        })
+      });
+      setSuccess(`Reconciliation Success: ${reconPv} PV credited to ${reconEmail}.`);
+      setReconEmail(''); setReconPv(''); setReconReceipt(''); setReconMessage('');
+    } catch (err: any) {
+      setError(err.message || "Reconciliation failed. Check receipt duplicate status.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
-      
-      {/* SUCCESS MESSAGE TOAST */}
-      {message && (
-        <div className="fixed top-24 right-8 bg-[#1d3557] text-white px-8 py-4 rounded-2xl shadow-2xl z-[100] font-black text-[10px] uppercase tracking-widest animate-bounce">
-          {message}
-        </div>
-      )}
-
-      <section className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden">
-        <div className="p-8 border-b border-slate-50 bg-slate-50/50 flex items-center gap-3">
-          <div className="w-1.5 h-6 bg-amber-400 rounded-full"></div>
-          <h3 className="text-lg font-black uppercase text-slate-800 tracking-tighter">Pending Credit Transactions</h3>
+    <div className="animate-in fade-in duration-500 max-w-5xl">
+      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-black uppercase tracking-tight" style={{ color: colors.navy }}>
+            Financial Operations
+          </h2>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+            Consignment Ledger & Payment Reconciliation
+          </p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50">
-                <th className="p-8">Username</th>
-                <th className="p-8">Products Taken</th>
-                <th className="p-8">Total Value (KES)</th>
-                <th className="p-8">Date Issued</th>
-                <th className="p-8">Status</th>
-                <th className="p-8 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {credits.map((c, i) => (
-                <tr key={i} className="hover:bg-slate-50 transition-colors group">
-                  <td className="p-8 font-black text-sm text-slate-900">{c.name}</td>
-                  <td className="p-8 text-xs font-bold text-slate-500 uppercase">{c.products}</td>
-                  <td className="p-8 font-black text-sm text-[#1d3557]">{c.total.toLocaleString()}</td>
-                  <td className="p-8 text-[11px] font-bold text-slate-400">{c.date}</td>
-                  <td className="p-8">
-                    <span className="bg-amber-100 text-amber-700 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest">
-                      {c.status}
-                    </span>
-                  </td>
-                  <td className="p-8 text-right flex justify-end gap-3">
-                    {/* RETURNED BUTTON */}
-                    <button 
-                      onClick={() => openModal('return', c)}
-                      className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-red-600 hover:text-white transition-all"
-                    >
-                      <span>✕</span> Returned
-                    </button>
-                    {/* PAID BUTTON */}
-                    <button 
-                      onClick={() => openModal('paid', c)}
-                      className="flex items-center gap-2 bg-green-50 text-[#03ac13] px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:bg-[#03ac13] hover:text-white transition-all shadow-sm"
-                    >
-                      <span>✓</span> Paid
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* SUB-NAVIGATION TOGGLE */}
+        <div className="flex bg-white rounded-xl p-1 border border-slate-200 shadow-sm">
+          <button 
+            onClick={() => { setActiveTab('consignment'); setError(null); setSuccess(null); }}
+            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === 'consignment' ? 'bg-[#f59e0b] text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}
+          >
+            Product Consignment
+          </button>
+          <button 
+            onClick={() => { setActiveTab('reconciliation'); setError(null); setSuccess(null); }}
+            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${activeTab === 'reconciliation' ? 'bg-[#dc2626] text-white shadow-md' : 'text-slate-400 hover:text-slate-700'}`}
+          >
+            Payment Reconciliation
+          </button>
         </div>
-      </section>
+      </div>
 
-      {/* CONFIRMATION DIALOG BOX */}
-      {modal.isOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6">
-          <div className="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl animate-in zoom-in-95 duration-200">
-            <h4 className="text-xl font-black text-slate-900 uppercase mb-4 tracking-tighter">
-              {modal.type === 'paid' ? 'Confirm Payment' : 'Confirm Return'}
-            </h4>
-            <p className="text-sm text-slate-500 font-bold mb-8">
-              {modal.type === 'paid' 
-                ? "Are you sure payment has been received? This will mark the credit transaction as paid." 
-                : "Are you sure the goods have been returned? This will mark the credit transaction as returned."}
-            </p>
-            
-            <div className="flex gap-3">
-              <button 
-                onClick={closeModal}
-                className="flex-1 bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-[10px] uppercase hover:bg-slate-200 transition-all"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleConfirm}
-                className={`flex-1 text-white py-4 rounded-2xl font-black text-[10px] uppercase shadow-lg transition-all hover:scale-105 ${
-                  modal.type === 'paid' ? 'bg-[#03ac13] shadow-green-100' : 'bg-red-600 shadow-red-100'
-                }`}
-              >
-                {modal.type === 'paid' ? 'Confirm Payment' : 'Confirm Return'}
-              </button>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        
+        {/* DYNAMIC FORM AREA */}
+        <div className="lg:col-span-3 bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+          
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 rounded-xl border border-red-100 flex items-start gap-3 text-red-700">
+              <AlertCircle size={18} className="shrink-0 mt-0.5" />
+              <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">{error}</p>
             </div>
+          )}
+
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 rounded-xl border border-green-100 flex items-start gap-3 text-green-700">
+              <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
+              <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">{success}</p>
+            </div>
+          )}
+
+          {/* TAB 1: CONSIGNMENT FORM */}
+          {activeTab === 'consignment' && (
+            <div className="animate-in fade-in slide-in-from-left-4">
+              <h3 className="text-sm font-black uppercase tracking-widest mb-6 border-b border-slate-100 pb-4 text-[#f59e0b] flex items-center gap-2">
+                <PackageOpen size={16} /> Issue Products on Credit
+              </h3>
+              <form onSubmit={handleIssueConsignment} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Distributor Email</label>
+                  <input required type="email" value={consignmentEmail} onChange={(e) => setConsignmentEmail(e.target.value)} placeholder="distributor@example.com" className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:border-[#f59e0b] transition-all font-bold" />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Select Product</label>
+                  <select required value={productId} onChange={(e) => setProductId(e.target.value)} className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:border-[#f59e0b] transition-all font-bold text-slate-800">
+                    <option value="" disabled>-- Choose a product --</option>
+                    
+                    {/* SMART LOADING CHECKS */}
+                    {isFetchingProducts && <option disabled>Loading products...</option>}
+                    {!isFetchingProducts && products.length === 0 && <option disabled>No products in database!</option>}
+                    
+                    {!isFetchingProducts && products.map(p => {
+                      const displayPrice = p.price || p.distributor_price || p.non_member_price || 0;
+                      
+                      
+                      const displayPv = p.fixed_pv || p.pv || 0; 
+                      
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {p.name} - KES {displayPrice.toLocaleString()} | {displayPv} PV
+                        </option>
+                      )
+                    })}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Quantity</label>
+                    <input required type="number" min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:border-[#f59e0b] transition-all font-black" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-1"><CalendarDays size={12}/> Due Date</label>
+                    <input required type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:border-[#f59e0b] transition-all font-bold text-slate-600" />
+                  </div>
+                </div>
+                <button type="submit" disabled={isLoading} className="w-full mt-4 flex items-center justify-center gap-2 text-white py-4 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: colors.orange }}>
+                  {isLoading ? 'Processing...' : <><Receipt size={14} /> Issue Consignment</>}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* TAB 2: RECONCILIATION FORM */}
+          {activeTab === 'reconciliation' && (
+            <div className="animate-in fade-in slide-in-from-right-4">
+              <h3 className="text-sm font-black uppercase tracking-widest mb-6 border-b border-slate-100 pb-4 text-red-600 flex items-center gap-2">
+                <ShieldAlert size={16} /> M-Pesa Fail Switch
+              </h3>
+              <form onSubmit={handleReconciliation} className="space-y-5">
+                <div className="grid grid-cols-2 gap-5">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Distributor Email</label>
+                    <input required type="email" value={reconEmail} onChange={(e) => setReconEmail(e.target.value)} placeholder="user@email.com" className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:border-red-500 transition-all font-bold" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Missing PV</label>
+                    <input required type="number" min="1" step="0.1" value={reconPv} onChange={(e) => setReconPv(e.target.value)} placeholder="150" className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:border-red-500 transition-all font-black" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">M-Pesa Receipt Number</label>
+                  <input required type="text" minLength={8} value={reconReceipt} onChange={(e) => setReconReceipt(e.target.value)} placeholder="QWE123RTY4" className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:border-red-500 transition-all font-bold uppercase tracking-wider" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1 flex items-center gap-1"><FileText size={12}/> Paste Full M-Pesa SMS</label>
+                  <textarea required rows={3} value={reconMessage} onChange={(e) => setReconMessage(e.target.value)} placeholder="Paste the exact SMS..." className="w-full px-4 py-3 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:border-red-500 transition-all font-medium text-slate-600 resize-none leading-relaxed" />
+                </div>
+                <button type="submit" disabled={isLoading} className="w-full mt-4 flex items-center justify-center gap-2 text-white py-4 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg hover:opacity-90 disabled:opacity-50" style={{ backgroundColor: colors.red }}>
+                  {isLoading ? 'Verifying...' : 'Reconcile Payment & Mint PV'}
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+
+        {/* DYNAMIC INFO CARD */}
+        <div className="lg:col-span-2 bg-[#1d3557] rounded-3xl p-8 shadow-lg text-white relative overflow-hidden flex flex-col justify-center">
+          <div className="absolute right-[-20px] top-[-20px] text-9xl opacity-5 rotate-12 pointer-events-none">
+            {activeTab === 'consignment' ? '📦' : '⚠️'}
+          </div>
+          <div className="relative z-10 animate-in fade-in">
+            {activeTab === 'consignment' ? (
+              <>
+                <h3 className="text-lg font-black mb-3 leading-tight text-[#f59e0b]">Consignment Rules</h3>
+                <p className="text-blue-100 text-xs leading-relaxed font-medium mb-4">Products are released from physical inventory and marked as unpaid debt. PV is strictly withheld until the debt is settled.</p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-black mb-3 leading-tight text-red-400">Strict Audit Protocol</h3>
+                <p className="text-blue-100 text-xs leading-relaxed font-medium mb-4">This logs the M-Pesa receipt directly into the Payment Audit Ledger. Strict deduplication prevents double-crediting.</p>
+                <p className="text-red-400 text-[10px] font-black uppercase tracking-widest pt-4 border-t border-white/10">Admin ID is permanently attached to this action.</p>
+              </>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
