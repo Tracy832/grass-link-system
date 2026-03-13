@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../assets/logo.jpeg';
+import { apiClient } from '../services/api';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,13 +11,40 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [showAlerts, setShowAlerts] = useState(false);
+  
+  // --- REAL-TIME NOTIFICATIONS STATE ---
+  const [notifications, setNotifications] = useState<any[]>([]);
+  
+  // Safely grab the logged in user ID (Default to 2 for safety if missing during test)
+  const storedUserId = localStorage.getItem('userId');
+  const loggedInUserId = storedUserId ? parseInt(storedUserId, 10) : 2; 
 
   const colors = { navy: '#1d3557', green: '#03ac13' };
+
+  // --- FETCH NOTIFICATIONS ON LOAD ---
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const data = await apiClient(`/notifications/${loggedInUserId}`, { method: 'GET' });
+        setNotifications(Array.isArray(data) ? data : (data.items || []));
+      } catch (err) {
+        console.error("Layout failed to load notifications", err);
+      }
+    };
+    fetchNotifications();
+    
+    // Optional: Refresh notifications every 60 seconds
+    const intervalId = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(intervalId);
+  }, [loggedInUserId]);
 
   const handleLogout = () => {
     localStorage.clear(); 
     navigate('/login');
   };
+
+  // Calculate actual unread count
+  const unreadCount = notifications.filter(n => !n.is_read && !n.read).length;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row pb-24 md:pb-0">
@@ -60,7 +88,7 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
             📜 Qualifications
           </button>
 
-          {/* Profile (NEW) */}
+          {/* Profile */}
           <button 
             onClick={() => navigate('/profile')} 
             className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${location.pathname === '/profile' ? 'bg-white/10 border-l-4' : 'opacity-60 hover:bg-white/5 border-l-4 border-transparent'}`}
@@ -83,22 +111,50 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* 2. MAIN CONTENT AREA */}
       <div className="flex-1 relative">
-        {/* Only the Notification Bell remains in the top right corner */}
+        {/* TOP RIGHT NOTIFICATION BELL */}
         <div className="fixed top-6 right-6 z-[60] print:hidden">
           <button 
             onClick={() => setShowAlerts(!showAlerts)}
             className="bg-white p-3 rounded-full shadow-lg border border-slate-100 relative hover:scale-105 transition-transform"
           >
             🔔
-            <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+            {unreadCount > 0 && (
+              <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+            )}
           </button>
 
           {showAlerts && (
-            <div className="absolute right-0 mt-3 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 animate-in fade-in slide-in-from-top-2">
-              <h3 className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Recent Activity</h3>
-              <div className="text-[11px] font-bold p-2 bg-slate-50 rounded-lg border-l-4 border-green-500">
-                Weekly PV updates are live.
+            <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 animate-in fade-in slide-in-from-top-2">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Recent Activity</h3>
+                <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{unreadCount} Unread</span>
               </div>
+              
+              <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                {notifications.length === 0 ? (
+                  <p className="text-[10px] font-bold text-center text-slate-400 py-4 uppercase tracking-widest">No alerts yet!</p>
+                ) : (
+                  // Show only the 3 most recent notifications in this dropdown
+                  notifications.slice(0, 3).map((notif, i) => {
+                    const isRead = notif.is_read || notif.read;
+                    return (
+                      <div key={notif.id || i} className={`text-[10px] font-bold p-3 rounded-xl border-l-4 ${isRead ? 'bg-slate-50 border-slate-300 text-slate-500' : 'bg-blue-50 border-blue-500 text-slate-800'}`}>
+                        <p className="uppercase tracking-widest text-[9px] mb-1 opacity-60">{notif.title || 'System Alert'}</p>
+                        {notif.message || notif.content}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              
+              {notifications.length > 3 && (
+                <button 
+                  onClick={() => { setShowAlerts(false); navigate('/dashboard'); }} 
+                  className="w-full mt-3 text-center text-[9px] font-black uppercase text-blue-500 hover:text-blue-600 transition-colors"
+                >
+                  View All Alerts on Dashboard
+                </button>
+              )}
             </div>
           )}
         </div>

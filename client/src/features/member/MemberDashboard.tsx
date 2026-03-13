@@ -5,6 +5,9 @@ import DashboardLayout from '../../layouts/DashboardLayout';
 import SkeletonLoader from './SkeletonLoader';
 import { apiClient } from '../../services/api';
 import MemberTransfer from './MemberTransfer'; 
+import PromotionTracker from './PromotionTracker';
+import RankHistoryWidget from './RankHistoryWidget';
+import MemberNotifications from './MemberNotifications';
 
 const MemberDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -67,10 +70,6 @@ const MemberDashboard: React.FC = () => {
   const groupPV = userData?.group_pv || 0;
   
   const isQualified = monthlyPV >= requiredPV;
-
-  const topDownline = userData?.downlines && userData.downlines.length > 0 
-    ? userData.downlines[0] 
-    : null;
 
   return (
     <DashboardLayout>
@@ -136,20 +135,9 @@ const MemberDashboard: React.FC = () => {
             {/* TAB 1: OVERVIEW METRICS */}
             {activeTab === 'overview' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-                <div className="rounded-3xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden" style={{ backgroundColor: colors.navy }}>
-                  <div className="absolute right-[-20px] top-[-20px] text-9xl opacity-10 rotate-12">🏆</div>
-                  <div className="relative z-10 flex items-start gap-4 md:gap-6">
-                    <div className="bg-white/10 p-3 md:p-4 rounded-2xl text-2xl border border-white/10 shadow-inner">💡</div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: colors.green }}>Next Rank Advisor</p>
-                      <p className="text-sm md:text-lg font-bold leading-tight">
-                        {topDownline 
-                          ? `Help ${topDownline.full_name || 'your team'} rank up to boost your group volume!` 
-                          : `Start recruiting downlines to multiply your group volume and rank up!`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                
+                {/* 🚨 LIVE PROMOTION TRACKER COMPONENT */}
+                <PromotionTracker userId={displayId} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -174,6 +162,13 @@ const MemberDashboard: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* 🚨 WIDGETS GRID (Rank History & Notifications) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                  <RankHistoryWidget userId={displayId} />
+                  <MemberNotifications userId={displayId} />
+                </div>
+
               </div>
             )}
 
