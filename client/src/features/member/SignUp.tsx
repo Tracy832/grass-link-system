@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import logo from '../../assets/logo.jpeg';
-// Note: Make sure the path to your image is correct!
 import supplementsBg from '../../assets/suplements.jpeg'; 
 import { apiClient } from '../../services/api';
 
@@ -10,18 +9,29 @@ const SignUp: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // 1. Added phone to the state
+  // 1. Added sponsorId to the state
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     phone: '', 
-    cardNumber: ''
+    cardNumber: '',
+    sponsorId: '' 
   });
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+
+    // Smart Parser: Extracts '5' from 'GI-5-2026', or just takes '5'. 
+    // Leaves as null if the field is empty.
+    let parsedSponsorId: number | null = null;
+    if (formData.sponsorId.trim() !== '') {
+      const match = formData.sponsorId.match(/\d+/);
+      if (match) {
+        parsedSponsorId = parseInt(match[0], 10);
+      }
+    }
 
     try {
       // 2. Send data to the FastAPI registration endpoint
@@ -31,7 +41,8 @@ const SignUp: React.FC = () => {
           full_name: formData.username, 
           email: formData.email,
           phone: formData.phone,
-          password: formData.cardNumber 
+          password: formData.cardNumber,
+          sponsor_id: parsedSponsorId // <--- Sending to Backend
         })
       });
 
@@ -89,7 +100,7 @@ const SignUp: React.FC = () => {
             />
           </div>
 
-          {/* PHONE (NEW) */}
+          {/* PHONE */}
           <div className="group">
             <label className="text-[10px] font-bold text-green-900 uppercase ml-1 opacity-60">Phone Number</label>
             <input 
@@ -113,6 +124,21 @@ const SignUp: React.FC = () => {
               placeholder="Create a strong password" 
               className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-gray-800" 
             />
+          </div>
+
+          {/* 🚨 NEW SPONSOR / REFERRAL FIELD */}
+          <div className="group mt-2">
+            <label className="text-[10px] font-bold text-green-900 uppercase ml-1 opacity-60">Sponsor ID (Optional)</label>
+            <input 
+              type="text" 
+              value={formData.sponsorId}
+              onChange={(e) => setFormData({...formData, sponsorId: e.target.value})}
+              placeholder="e.g. GI-5-2026 or leave blank" 
+              className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-gray-800" 
+            />
+            <p className="text-[8px] font-bold text-green-900/60 uppercase tracking-widest pl-1 mt-1.5 leading-tight">
+              Leave blank to start your own independent network.
+            </p>
           </div>
 
           <button 
