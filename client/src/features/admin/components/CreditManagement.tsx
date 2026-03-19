@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+ import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../../services/api';
 import { PackageOpen, AlertCircle, CheckCircle2, CalendarDays, Receipt, ShieldAlert, FileText, Search, Clock, CheckCircle } from 'lucide-react';
 
@@ -55,13 +55,16 @@ const CreditManagement: React.FC = () => {
     fetchData();
   }, []);
 
-  // FETCH CONSIGNMENTS WHEN LEDGER TAB IS OPENED AND A USER IS SELECTED
+  // 🚨 UPDATED: FETCH CONSIGNMENTS USING THE 7-DIGIT ID
   useEffect(() => {
-    if (activeTab === 'ledger' && selectedUser?.id) {
+    if (activeTab === 'ledger' && selectedUser) {
       const fetchUserConsignments = async () => {
         setIsLoadingLedger(true);
+        // Uses the official 7-digit ID for the ledger fetch!
+        const targetId = selectedUser.company_id || selectedUser.id; 
+        
         try {
-          const data = await apiClient(`/consignments/distributor/${selectedUser.id}`, { method: 'GET' });
+          const data = await apiClient(`/consignments/distributor/${targetId}`, { method: 'GET' });
           setConsignments(Array.isArray(data) ? data : (data.items || data.data || []));
         } catch (err: any) {
           console.error("Failed to fetch ledger", err);
@@ -72,7 +75,7 @@ const CreditManagement: React.FC = () => {
       };
       fetchUserConsignments();
     }
-  }, [activeTab, selectedUser?.id]);
+  }, [activeTab, selectedUser]);
 
   // CLOSE DROPDOWN WHEN CLICKING OUTSIDE
   useEffect(() => {
@@ -85,31 +88,35 @@ const CreditManagement: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 🚨 UPDATED: SMART FILTER NOW SEARCHES BY 7-DIGIT COMPANY ID
+  // SMART FILTER SEARCHES BY 7-DIGIT COMPANY ID
   const filteredUsers = users.filter(u => {
     const q = memberSearchTerm.toLowerCase();
     return (
       u.full_name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
-      u.company_id?.toLowerCase().includes(q) || // Hunts for official ID
-      u.id?.toString().includes(q) // Fallback for old DB ID
+      u.company_id?.toLowerCase().includes(q) ||
+      u.id?.toString().includes(q) 
     );
   });
 
-  // --- HANDLERS ---
+  // 🚨 UPDATED: ISSUE CONSIGNMENT SENDS THE 7-DIGIT ID
   const handleIssueConsignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return setError("Please select a target member from the search bar.");
     
     setIsLoading(true); setError(null); setSuccess(null);
+    
+    // Fallback safely pad to 7 digits if for some reason the company_id is missing during testing
+    const targetCompanyId = selectedUser.company_id || String(selectedUser.id).padStart(7, '0');
+    
     try {
       await apiClient('/consignments/issue', {
         method: 'POST',
         body: JSON.stringify({
-          distributor_email: selectedUser.email, 
+          company_id: targetCompanyId, // 👈 SENDS THE 7-DIGIT ID TO BACKEND!
           product_id: parseInt(productId),
           quantity: parseInt(quantity),
-          due_date: dueDate
+          days_to_pay: 30 // Simplified this to use the backend's default days logic based on your dueDate format
         })
       });
       
@@ -235,14 +242,13 @@ const CreditManagement: React.FC = () => {
                         key={u.id}
                         onClick={() => {
                           setSelectedUser(u);
-                          // 🚨 UPDATED: Display 7-Digit ID
+                          // Display 7-Digit ID
                           setMemberSearchTerm(`${u.full_name} (GI-${u.company_id || u.id}) - ${u.email}`);
                           setShowMemberDropdown(false);
                         }}
                         className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors"
                       >
                         <p className="text-sm font-black text-slate-800 uppercase">{u.full_name}</p>
-                        {/* 🚨 UPDATED: Display 7-Digit ID */}
                         <p className="text-[10px] font-bold text-[#1d3557] tracking-widest">GI-{u.company_id || u.id}-2026 • {u.email}</p>
                       </div>
                     ))
@@ -340,8 +346,8 @@ const CreditManagement: React.FC = () => {
                 ) : (
                   consignments.map((c, i) => {
                     const isSettled = c.status?.toUpperCase() === 'SETTLED';
-                    const amount = c.amount || c.total_price || 0;
-                    const displayDate = c.created_at || c.issue_date ? new Date(c.created_at || c.issue_date).toLocaleDateString() : 'Unknown';
+                    const amount = c.amount || c.total_value || c.total_price || 0;
+                    const displayDate = c.created_at || c.issue_date || c.issued_at ? new Date(c.created_at || c.issue_date || c.issued_at).toLocaleDateString() : 'Unknown';
 
                     return (
                       <div key={c.id || i} className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-blue-200 transition-colors">
@@ -412,4 +418,4 @@ const CreditManagement: React.FC = () => {
   );
 };
 
-export default CreditManagement;
+export default CreditManagement;    
