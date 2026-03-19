@@ -4,6 +4,7 @@ import { Users, AlertCircle, Fingerprint } from 'lucide-react';
 
 interface User {
   id: number;
+  company_id?: string; 
   full_name: string;
   email: string;
   star_level: any;
@@ -37,19 +38,20 @@ const UserTable: React.FC<UserTableProps> = ({ searchQuery, setSearchQuery }) =>
     fetchUsers();
   }, []);
 
-  // 🔥 SMART SEARCH: Now explicitly looks for the official GI-ID format
+  //  SMART SEARCH: Now strictly targets the 7-digit company ID
   const filteredUsers = useMemo(() => {
     if (!searchQuery) return users;
     const lowerQuery = searchQuery.toLowerCase().trim();
     
     return users.filter(user => {
-      const officialId = `gi-${user.id}-2026`.toLowerCase();
-      const justTheNumber = user.id.toString();
+      
+      const displayId = user.company_id || user.id.toString();
+      const officialId = `gi-${displayId}-2026`.toLowerCase();
       
       return (
         user.full_name?.toLowerCase().includes(lowerQuery) ||
         officialId.includes(lowerQuery) ||
-        justTheNumber.includes(lowerQuery) ||
+        displayId.toString().includes(lowerQuery) ||
         user.email?.toLowerCase().includes(lowerQuery)
       );
     });
@@ -79,10 +81,10 @@ const UserTable: React.FC<UserTableProps> = ({ searchQuery, setSearchQuery }) =>
         <div className="relative w-full md:w-80">
           <input 
             type="text"
-            placeholder="Search Name or ID (e.g. GI-5-2026)"
+            placeholder="Search Name or ID (e.g. 0012345)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-6 py-3 rounded-2xl bg-white border-2 border-slate-100 focus:border-[#03ac13] outline-none text-xs font-bold transition-all shadow-sm text-slate-700"
+            className="w-full pl-12 pr-6 py-3 rounded-2xl bg-white border-2 border-slate-100 focus:border-[#03ac13] outline-none text-xs font-bold transition-all shadow-sm text-slate-700 tracking-widest"
           />
           <span className="absolute left-5 top-3.5 opacity-40 text-slate-400"><Fingerprint size={16}/></span>
         </div>
@@ -131,7 +133,10 @@ const UserTable: React.FC<UserTableProps> = ({ searchQuery, setSearchQuery }) =>
                   <p className="font-black text-sm text-slate-900 uppercase">{user.full_name}</p>
                   <div className="flex items-center gap-1.5 mt-1">
                     <Fingerprint size={10} className="text-[#03ac13]" />
-                    <p className="text-[11px] font-black text-[#03ac13] tracking-widest">GI-{user.id}-2026</p>
+                    {/* 🚨 UPDATED: Renders the 7-digit ID */}
+                    <p className="text-[11px] font-black text-[#03ac13] tracking-widest">
+                      GI-{user.company_id || user.id}-2026
+                    </p>
                   </div>
                 </td>
                 <td className="p-8">

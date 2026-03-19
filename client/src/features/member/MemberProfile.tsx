@@ -34,11 +34,13 @@ const MemberProfile: React.FC = () => {
 
   if (isLoading) return <SkeletonLoader />;
 
-  // Look how clean this is now! We just use the real data from the backend.
+  // 🚨 UPDATED: Now strictly hunts for the 7-digit company IDs!
   const displayName = profileData?.full_name || 'Valued Member';
-  const displayId = profileData?.id || '0000';
+  const displayId = profileData?.company_id || '0000000';
   const displayPhone = profileData?.phone || 'Not Provided';
-  const displaySponsor = profileData?.sponsor_id || null;
+  
+  // Looks for the sponsor's official ID first, falls back to the old one if needed
+  const displaySponsor = profileData?.sponsor_company_id || profileData?.sponsor_id || null;
 
   return (
     <DashboardLayout>

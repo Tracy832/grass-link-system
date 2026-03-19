@@ -17,10 +17,14 @@ const TeamTree = () => {
   useEffect(() => {
     const fetchTree = async () => {
       try {
-        // Fetching from the dashboard endpoint (or a specific tree endpoint if you create one)
-        const data = await apiClient('/distributors/my-dashboard', {
+        // 🚨 CRITICAL FIX 1: Grab the 7-digit ID from Local Storage
+        const companyId = localStorage.getItem('companyId') || localStorage.getItem('userId');
+        
+        // 🚨 CRITICAL FIX 2: Fetch the actual Tree API (/group-summary), NOT the Dashboard API!
+        const data = await apiClient(`/distributors/${companyId}/group-summary`, {
           method: 'GET'
         });
+        
         setTreeData(data);
       } catch (err: any) {
         setError(err.message || "Failed to load genealogy tree.");
@@ -41,35 +45,41 @@ const TeamTree = () => {
     window.print();
   };
 
-  const isMatch = (name: string) => 
-    searchTerm !== "" && name.toLowerCase().includes(searchTerm.toLowerCase());
+  const isMatch = (name: string, id: string | number) => {
+    if (!searchTerm) return false;
+    const term = searchTerm.toLowerCase();
+    return name.toLowerCase().includes(term) || id.toString().toLowerCase().includes(term);
+  };
 
   if (isLoading) return <SkeletonLoader />;
 
-  // 2. Helper to parse Enum strings (e.g., "STAR_3") into numbers
+  // Helper to parse Enum strings (e.g., "STAR_3") into numbers
   const parseStarLevel = (starString: string) => {
     if (!starString) return 0;
     const match = starString.match(/\d+/);
     return match ? parseInt(match[0], 10) : 0;
   };
 
-  // 3. Map the live data to the exact structure your UI expects
+  // 🚨 MAPPED: Correctly extracting the ROOT user's data from the /group-summary response
   const user = { 
-    name: treeData?.full_name || "Valued Member", 
-    currentStar: parseStarLevel(treeData?.star_level), 
+    name: treeData?.sponsor_name || "Valued Member",
+    companyId: treeData?.sponsor_company_id || '0000000', 
+    currentStar: parseStarLevel(treeData?.sponsor_rank), 
     ppv: treeData?.personal_pv || 0, 
     gpv: treeData?.group_pv || 0 
   };
 
-  // 4. Dynamically map downlines and assign Leg letters (A, B, C...)
+  // 🚨 MAPPED: Correctly extracting Leg 1 and Leg 2 data from the downlines array
   const legs = (treeData?.downlines || []).map((member: any, idx: number) => ({
     name: member.full_name || "Unknown Distributor",
+    companyId: member.company_id || '0000000',
     rank: parseStarLevel(member.star_level),
     leg: String.fromCharCode(65 + idx), // Converts 0 -> A, 1 -> B, 2 -> C
     ppv: member.personal_pv || 0,
     gpv: member.group_pv || 0,
     team: (member.downlines || []).map((sub: any) => ({
       name: sub.full_name || "Unknown Distributor",
+      companyId: sub.company_id || '0000000',
       rank: parseStarLevel(sub.star_level),
       ppv: sub.personal_pv || 0,
       gpv: sub.group_pv || 0,
@@ -93,7 +103,7 @@ const TeamTree = () => {
         <div className="flex-1 max-w-xs mx-4">
           <input 
             type="text" 
-            placeholder="Search name..." 
+            placeholder="Search Name or ID..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-4 py-2 rounded-xl border-2 border-slate-100 focus:border-[#03ac13] outline-none text-xs font-bold"
@@ -131,8 +141,10 @@ const TeamTree = () => {
           
           {/* LEVEL 1: YOU */}
           <div className="flex flex-col items-center">
-            <div className={`bg-white p-5 rounded-3xl shadow-xl border-t-8 w-72 text-center border-[#03ac13] ${isMatch(user.name) ? 'ring-4 ring-yellow-400 scale-105' : ''}`}>
-              <h2 className="text-lg font-black mb-2" style={{ color: colors.navy }}>{user.name}</h2>
+            <div className={`bg-white p-5 rounded-3xl shadow-xl border-t-8 w-72 text-center border-[#03ac13] ${isMatch(user.name, user.companyId) ? 'ring-4 ring-yellow-400 scale-105' : ''}`}>
+              <h2 className="text-lg font-black mb-0.5" style={{ color: colors.navy }}>{user.name}</h2>
+              <p className="text-[10px] font-black text-slate-400 tracking-widest mb-3 uppercase">GI-{user.companyId}</p>
+              
               <div className="grid grid-cols-2 gap-2 mb-3">
                 <div className="bg-slate-50 p-2 rounded-xl">
                   <p className="text-[7px] font-black text-slate-400 uppercase">Personal</p>
@@ -157,9 +169,11 @@ const TeamTree = () => {
               {legs.map((member: any, idx: number) => (
                 <div key={idx} className="flex flex-col items-center min-w-[260px]">
                   <div className="h-8 w-1 bg-slate-300"></div>
-                  <div className={`bg-white p-4 rounded-2xl shadow-md border-b-4 w-full text-center transition-all ${isMatch(member.name) ? 'ring-4 ring-yellow-400 scale-105' : ''}`} style={{ borderBottomColor: colors.green }}>
+                  <div className={`bg-white p-4 rounded-2xl shadow-md border-b-4 w-full text-center transition-all ${isMatch(member.name, member.companyId) ? 'ring-4 ring-yellow-400 scale-105' : ''}`} style={{ borderBottomColor: colors.green }}>
                     <p className="text-[8px] font-black text-slate-400 uppercase mb-1 tracking-tighter italic">Leg {member.leg}</p>
-                    <h3 className="text-sm font-black mb-2" style={{ color: colors.navy }}>{member.name}</h3>
+                    <h3 className="text-sm font-black mb-0.5" style={{ color: colors.navy }}>{member.name}</h3>
+                    <p className="text-[8px] font-black text-slate-400 tracking-widest mb-3 uppercase">GI-{member.companyId}</p>
+
                     <div className="grid grid-cols-2 gap-2 mb-3">
                       <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
                         <p className="text-[7px] font-bold text-slate-400">PPV: {member.ppv}</p>
@@ -180,8 +194,10 @@ const TeamTree = () => {
                         {member.team.map((sub: any, sIdx: number) => (
                           <div key={sIdx} className="flex flex-col items-center">
                             <div className="h-4 w-0.5 bg-slate-200"></div>
-                            <div className={`bg-white p-3 rounded-xl border border-slate-100 w-36 text-center shadow-sm ${isMatch(sub.name) ? 'ring-4 ring-yellow-400 scale-105' : ''}`}>
-                              <p className="text-[10px] font-black text-slate-700 leading-tight mb-1">{sub.name}</p>
+                            <div className={`bg-white p-3 rounded-xl border border-slate-100 w-36 text-center shadow-sm ${isMatch(sub.name, sub.companyId) ? 'ring-4 ring-yellow-400 scale-105' : ''}`}>
+                              <p className="text-[10px] font-black text-slate-700 leading-tight mb-0.5">{sub.name}</p>
+                              <p className="text-[7px] font-black text-slate-400 tracking-widest mb-1.5 uppercase">GI-{sub.companyId}</p>
+
                               <div className="flex flex-col gap-0.5 text-[8px] font-bold mb-2">
                                 <span className="text-slate-400">PPV: {sub.ppv}</span>
                                 <span className="text-green-600 font-black tracking-tight">GPV: {sub.gpv}</span>
