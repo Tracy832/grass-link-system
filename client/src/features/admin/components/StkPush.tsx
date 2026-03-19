@@ -59,13 +59,14 @@ const StkPush: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // SMART FILTER FOR USERS
+  // 🚨 UPDATED: SMART FILTER FOR USERS NOW SEARCHES COMPANY_ID
   const filteredUsers = users.filter(u => {
     const q = memberSearchTerm.toLowerCase();
     return (
       u.full_name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
-      u.id?.toString().includes(q)
+      u.company_id?.toLowerCase().includes(q) || // Hunts for the 7-digit ID
+      u.id?.toString().includes(q) // Fallback
     );
   });
 
@@ -105,16 +106,14 @@ const StkPush: React.FC = () => {
     }
 
     try {
-      // 🚨 FIX APPLIED: URLSearchParams perfectly formats the query string for FastAPI
       const queryParams = new URLSearchParams({
-        distributor_id: selectedUserId,
+        distributor_id: selectedUserId, // Still sending the internal ID for backend logic
         phone_number: phoneNumber,
         amount: amount
       }).toString();
 
       await apiClient(`/payments/stk-push/${selectedProductId}?${queryParams}`, {
         method: 'POST'
-        // No body! Everything is safely in the URL now.
       });
       
       setSuccess(`STK Push successfully sent to ${phoneNumber} for KES ${amount}!`);
@@ -175,7 +174,7 @@ const StkPush: React.FC = () => {
                     setSelectedUserId('');
                   }}
                   onFocus={() => setShowMemberDropdown(true)}
-                  placeholder={isLoadingData ? "Loading members..." : "Search Name, ID, or Email..."}
+                  placeholder={isLoadingData ? "Loading members..." : "Search Name, Email, or 7-Digit ID..."}
                   className="w-full pl-12 pr-4 py-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:border-[#03ac13] outline-none text-sm font-bold text-slate-700 transition-all"
                 />
                 <Search size={16} className="absolute left-4 top-4 text-slate-400" />
@@ -191,13 +190,15 @@ const StkPush: React.FC = () => {
                         key={u.id}
                         onClick={() => {
                           setSelectedUserId(u.id.toString());
-                          setMemberSearchTerm(`${u.full_name} (GI-${u.id}-2026)`);
+                          // 🚨 UPDATED: Displays the 7-digit ID in the input box when clicked
+                          setMemberSearchTerm(`${u.full_name} (GI-${u.company_id || u.id}-2026)`);
                           setShowMemberDropdown(false);
                         }}
                         className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors"
                       >
                         <p className="text-sm font-black text-slate-800 uppercase">{u.full_name}</p>
-                        <p className="text-[10px] font-bold text-[#03ac13] tracking-widest">GI-{u.id}-2026 • {u.email}</p>
+                        {/* 🚨 UPDATED: Displays the 7-digit ID in the dropdown */}
+                        <p className="text-[10px] font-bold text-[#03ac13] tracking-widest">GI-{u.company_id || u.id}-2026 • {u.email}</p>
                       </div>
                     ))
                   )}

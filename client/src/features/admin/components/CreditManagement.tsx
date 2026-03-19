@@ -85,13 +85,14 @@ const CreditManagement: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // SMART FILTER FOR USERS
+  // 🚨 UPDATED: SMART FILTER NOW SEARCHES BY 7-DIGIT COMPANY ID
   const filteredUsers = users.filter(u => {
     const q = memberSearchTerm.toLowerCase();
     return (
       u.full_name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
-      u.id?.toString().includes(q)
+      u.company_id?.toLowerCase().includes(q) || // Hunts for official ID
+      u.id?.toString().includes(q) // Fallback for old DB ID
     );
   });
 
@@ -200,7 +201,7 @@ const CreditManagement: React.FC = () => {
             </div>
           )}
 
-          {/* GLOBAL SMART SEARCH (Shared across all 3 tabs) */}
+          {/* GLOBAL SMART SEARCH */}
           <div className="mb-8 shrink-0">
             <div className="space-y-1.5 relative" ref={dropdownRef}>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Target Member Account</label>
@@ -214,7 +215,7 @@ const CreditManagement: React.FC = () => {
                     setSelectedUser(null);
                   }}
                   onFocus={() => setShowMemberDropdown(true)}
-                  placeholder={isFetchingData ? "Loading database..." : "Search Name, Email, or ID..."}
+                  placeholder={isFetchingData ? "Loading database..." : "Search Name, Email, or 7-Digit ID..."}
                   className={`w-full pl-12 pr-4 py-4 rounded-xl bg-slate-50 border outline-none text-sm font-bold text-slate-700 transition-all ${selectedUser ? 'border-[#03ac13] ring-1 ring-[#03ac13]/20 bg-green-50/30' : 'border-slate-200 focus:border-[#1d3557] focus:ring-2'}`}
                 />
                 {selectedUser ? (
@@ -234,13 +235,15 @@ const CreditManagement: React.FC = () => {
                         key={u.id}
                         onClick={() => {
                           setSelectedUser(u);
-                          setMemberSearchTerm(`${u.full_name} (GI-${u.id}) - ${u.email}`);
+                          // 🚨 UPDATED: Display 7-Digit ID
+                          setMemberSearchTerm(`${u.full_name} (GI-${u.company_id || u.id}) - ${u.email}`);
                           setShowMemberDropdown(false);
                         }}
                         className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors"
                       >
                         <p className="text-sm font-black text-slate-800 uppercase">{u.full_name}</p>
-                        <p className="text-[10px] font-bold text-[#1d3557] tracking-widest">GI-{u.id}-2026 • {u.email}</p>
+                        {/* 🚨 UPDATED: Display 7-Digit ID */}
+                        <p className="text-[10px] font-bold text-[#1d3557] tracking-widest">GI-{u.company_id || u.id}-2026 • {u.email}</p>
                       </div>
                     ))
                   )}

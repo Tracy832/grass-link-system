@@ -57,8 +57,8 @@ const MemberDashboard: React.FC = () => {
     return match ? parseInt(match[0], 10) : 0;
   };
 
-  // 🔥 AGGRESSIVE DATA HUNTERS
-  const displayId = userData?.id || userData?.distributor_id || userData?.user_id || '0000';
+  // 🔥 🚨 UPDATED: Now aggressively hunting for the official 7-digit company ID!
+  const displayId = userData?.company_id || '0000000';
   const displayName = userData?.full_name || userData?.name || userData?.username || currentUserName;
 
   const currentStarNumber = userData ? parseStarLevel(userData.star_level) : 0;
