@@ -1,31 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../../services/api';
-import { Smartphone, CheckCircle2, AlertCircle, Loader2, Search } from 'lucide-react';
+import { Smartphone, CheckCircle2, AlertCircle, Loader2, Search, UserCheck, Users, Tag, Gift, Hash } from 'lucide-react';
 
 const StkPush: React.FC = () => {
-  // --- LIVE DATA STATE ---
   const [users, setUsers] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]); 
   const [isLoadingData, setIsLoadingData] = useState(true);
 
-  // --- FORM STATE ---
+  const [buyerType, setBuyerType] = useState<'member' | 'walk-in'>('member');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [amount, setAmount] = useState('');
+  const [quantity, setQuantity] = useState<number>(1); 
   
-  // --- SMART SEARCH STATE ---
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
-  const [showMemberDropdown, setShowMemberDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showMemberDropdown, setShowMemberDropdown] = useState(false); 
+  const [selectedUserObj, setSelectedUserObj] = useState<any>(null);
+  const memberDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [referrerSearchTerm, setReferrerSearchTerm] = useState('');
+  const [showReferrerDropdown, setShowReferrerDropdown] = useState(false);
+  const [selectedReferrerObj, setSelectedReferrerObj] = useState<any>(null);
+  const referrerDropdownRef = useRef<HTMLDivElement>(null);
   
-  // --- SUBMISSION STATE ---
   const [isPushing, setIsPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // FETCH EVERYTHING ON LOAD
   const fetchData = async () => {
     try {
       const [usersData, productsData, txData] = await Promise.all([
@@ -33,7 +36,6 @@ const StkPush: React.FC = () => {
         apiClient('/products/', { method: 'GET' }),
         apiClient('/payments/history', { method: 'GET' }).catch(() => []) 
       ]);
-      
       setUsers(Array.isArray(usersData) ? usersData : (usersData.items || []));
       setProducts(Array.isArray(productsData) ? productsData : (productsData.items || []));
       setTransactions(Array.isArray(txData) ? txData : (txData.items || txData.data || []));
@@ -44,48 +46,63 @@ const StkPush: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
-  // CLOSE DROPDOWN WHEN CLICKING OUTSIDE
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (memberDropdownRef.current && !memberDropdownRef.current.contains(event.target as Node)) {
         setShowMemberDropdown(false);
+      }
+      if (referrerDropdownRef.current && !referrerDropdownRef.current.contains(event.target as Node)) {
+        setShowReferrerDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 🚨 UPDATED: SMART FILTER FOR USERS NOW SEARCHES COMPANY_ID
-  const filteredUsers = users.filter(u => {
-    const q = memberSearchTerm.toLowerCase();
-    return (
+  const filterUsers = (term: string) => {
+    const q = term.toLowerCase();
+    return users.filter(u => 
       u.full_name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
-      u.company_id?.toLowerCase().includes(q) || // Hunts for the 7-digit ID
-      u.id?.toString().includes(q) // Fallback
+      u.company_id?.toLowerCase().includes(q) ||
+      u.id?.toString().includes(q)
     );
-  });
-
-  // SMART AUTO-FILL: When a product is selected, auto-fill the price
-  const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const prodId = e.target.value;
-    setSelectedProductId(prodId);
-    
-    if (prodId) {
-      const selectedProd = products.find(p => p.id.toString() === prodId);
-      if (selectedProd) {
-        setAmount((selectedProd.distributor_price || 0).toString());
-      }
-    } else {
-      setAmount(''); 
-    }
   };
 
-  // HANDLE STK PUSH SUBMISSION
+  useEffect(() => {
+    if (selectedProductId) {
+      const selectedProd = products.find(p => p.id.toString() === selectedProductId);
+      if (selectedProd) {
+        const basePrice = buyerType === 'member' 
+          ? (selectedProd.distributor_price || selectedProd.price || 0)
+          : (selectedProd.non_member_price || selectedProd.distributor_price || selectedProd.price || 0);
+        
+        setAmount((basePrice * quantity).toString()); 
+      }
+    } else {
+      setAmount('');
+    }
+  }, [buyerType, selectedProductId, products, quantity]);
+
+  const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedProductId(e.target.value);
+  };
+
+  const activeProduct = products.find(p => p.id.toString() === selectedProductId);
+  const minPriceAllowed = activeProduct ? (activeProduct.distributor_price || activeProduct.price || 0) * quantity : 0;
+  const isPriceTooLow = buyerType === 'walk-in' && activeProduct && parseFloat(amount) < minPriceAllowed;
+  const livePV = activeProduct ? (activeProduct.fixed_pv || activeProduct.pv || 0) * quantity : 0; 
+
+  let pvRecipient = 'Pending Details...';
+  if (activeProduct) {
+    if (buyerType === 'member' && selectedUserObj) pvRecipient = selectedUserObj.full_name;
+    else if (buyerType === 'walk-in') {
+      pvRecipient = selectedReferrerObj ? `${selectedReferrerObj.full_name} (Referrer)` : 'Company (No PV Assigned)';
+    }
+  }
+
   const handleSendStkPush = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsPushing(true); setError(null); setSuccess(null);
@@ -95,35 +112,56 @@ const StkPush: React.FC = () => {
       setIsPushing(false); return;
     }
 
-    if (!selectedUserId) {
+    if (buyerType === 'member' && !selectedUserId) {
       setError("You must select a target member from the dropdown.");
       setIsPushing(false); return;
     }
 
-    if (!selectedProductId) {
-      setError("You must select a product to generate an STK Push.");
+    if (!selectedProductId || quantity < 1) {
+      setError("You must select a product and a valid quantity.");
+      setIsPushing(false); return;
+    }
+
+    if (isPriceTooLow) {
+      setError(`Retail price cannot be lower than the wholesale price (KES ${minPriceAllowed.toLocaleString()}).`);
       setIsPushing(false); return;
     }
 
     try {
-      const queryParams = new URLSearchParams({
-        distributor_id: selectedUserId, // Still sending the internal ID for backend logic
-        phone_number: phoneNumber,
-        amount: amount
-      }).toString();
+      // 🚨 FIX: Constructing exact URL parameters to match your live Python backend
+      const queryParams = new URLSearchParams();
+      queryParams.append('phone_number', phoneNumber);
+      queryParams.append('amount', amount);
+      queryParams.append('quantity', quantity.toString());
 
-      await apiClient(`/payments/stk-push/${selectedProductId}?${queryParams}`, {
+      if (buyerType === 'member') {
+        queryParams.append('distributor_id', selectedUserId);
+      } else if (buyerType === 'walk-in') {
+        queryParams.append('is_walk_in', 'true');
+        if (selectedReferrerObj) {
+          queryParams.append('distributor_id', selectedReferrerObj.id.toString()); 
+        }
+      }
+
+      // 🚨 FIX: Sending data strictly via URL, NOT JSON Body
+      await apiClient(`/payments/stk-push-v2/${selectedProductId}?${queryParams.toString()}`, {
         method: 'POST'
       });
       
-      setSuccess(`STK Push successfully sent to ${phoneNumber} for KES ${amount}!`);
+      setSuccess(`STK Push successfully sent to ${phoneNumber} for ${quantity}x item(s) totaling KES ${amount}!`);
       
-      // Reset form & refresh the ledger to check for new transactions
-      setPhoneNumber(''); setAmount(''); setSelectedProductId(''); 
-      setSelectedUserId(''); setMemberSearchTerm('');
+      setPhoneNumber(''); setAmount(''); setSelectedProductId(''); setQuantity(1);
+      setSelectedUserId(''); setMemberSearchTerm(''); setSelectedUserObj(null);
+      setReferrerSearchTerm(''); setSelectedReferrerObj(null);
       fetchData(); 
     } catch (err: any) {
-      setError(err.message || "Failed to initiate STK Push. Check Daraja credentials.");
+      // Graceful error display
+      if (Array.isArray(err.message)) {
+        const errorStrings = err.message.map((m: any) => `${m.loc[1]}: ${m.msg}`);
+        setError(`Validation Error: ${errorStrings.join(' | ')}`);
+      } else {
+        setError(err.message || "Failed to initiate STK Push.");
+      }
     } finally {
       setIsPushing(false);
     }
@@ -134,7 +172,6 @@ const StkPush: React.FC = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         
-        {/* LEFT COLUMN: M-PESA STK PUSH FORM */}
         <section className="bg-white rounded-[2.5rem] p-10 shadow-xl border border-slate-100 h-fit">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-3 bg-green-50 rounded-2xl text-[#03ac13] font-bold">
@@ -146,68 +183,121 @@ const StkPush: React.FC = () => {
             </div>
           </div>
 
+          <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-8">
+            <button 
+              type="button"
+              onClick={() => { setBuyerType('member'); setError(null); setSuccess(null); }}
+              className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 transition-all ${buyerType === 'member' ? 'bg-white text-[#1d3557] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <UserCheck size={16} /> Registered Member
+            </button>
+            <button 
+              type="button"
+              onClick={() => { setBuyerType('walk-in'); setError(null); setSuccess(null); }}
+              className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 transition-all ${buyerType === 'walk-in' ? 'bg-[#f59e0b] text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <Users size={16} /> Walk-in Customer
+            </button>
+          </div>
+
           {error && (
-            <div className="mb-6 p-4 bg-red-50 rounded-xl border border-red-100 flex items-start gap-3 text-red-700">
+            <div className="mb-6 p-4 bg-red-50 rounded-xl border border-red-100 flex items-start gap-3 text-red-700 animate-in slide-in-from-top-2">
               <AlertCircle size={18} className="shrink-0 mt-0.5" />
               <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">{error}</p>
             </div>
           )}
 
           {success && (
-            <div className="mb-6 p-4 bg-green-50 rounded-xl border border-green-100 flex items-start gap-3 text-green-700">
+            <div className="mb-6 p-4 bg-green-50 rounded-xl border border-green-100 flex items-start gap-3 text-green-700 animate-in slide-in-from-top-2">
               <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
               <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">{success}</p>
             </div>
           )}
 
-          <form onSubmit={handleSendStkPush} className="space-y-5">
+          <form onSubmit={handleSendStkPush} className="space-y-6">
             
-            <div className="space-y-1.5 relative" ref={dropdownRef}>
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Target Member</label>
-              <div className="relative">
-                <input 
-                  type="text"
-                  value={memberSearchTerm}
-                  onChange={(e) => {
-                    setMemberSearchTerm(e.target.value);
-                    setShowMemberDropdown(true);
-                    setSelectedUserId('');
-                  }}
-                  onFocus={() => setShowMemberDropdown(true)}
-                  placeholder={isLoadingData ? "Loading members..." : "Search Name, Email, or 7-Digit ID..."}
-                  className="w-full pl-12 pr-4 py-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:border-[#03ac13] outline-none text-sm font-bold text-slate-700 transition-all"
-                />
-                <Search size={16} className="absolute left-4 top-4 text-slate-400" />
-              </div>
+            {buyerType === 'member' ? (
+              <div className="space-y-1.5 relative" ref={memberDropdownRef}>
+                <label className="text-[10px] font-black uppercase text-[#1d3557] tracking-widest pl-1">Target Member Account</label>
+                <div className="relative">
+                  <input 
+                    type="text"
+                    value={memberSearchTerm}
+                    onChange={(e) => {
+                      setMemberSearchTerm(e.target.value);
+                      setShowMemberDropdown(true);
+                      setSelectedUserId('');
+                      setSelectedUserObj(null);
+                    }}
+                    onFocus={() => setShowMemberDropdown(true)}
+                    placeholder={isLoadingData ? "Loading members..." : "Search Name, Email, or 7-Digit ID..."}
+                    className={`w-full pl-12 pr-4 py-4 rounded-xl bg-slate-50 border focus:ring-2 outline-none text-sm font-bold text-slate-700 transition-all ${selectedUserId ? 'border-[#03ac13] ring-1 ring-[#03ac13]/20 bg-green-50/30' : 'border-slate-200 focus:border-[#1d3557]'}`}
+                  />
+                  {selectedUserId ? <CheckCircle2 size={16} className="absolute left-4 top-4 text-[#03ac13]" /> : <Search size={16} className="absolute left-4 top-4 text-slate-400" />}
+                </div>
 
-              {showMemberDropdown && (
-                <div className="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto">
-                  {filteredUsers.length === 0 ? (
-                    <div className="p-4 text-xs font-bold text-slate-400 text-center uppercase tracking-widest">No members found</div>
-                  ) : (
-                    filteredUsers.map(u => (
+                {showMemberDropdown && (
+                  <div className="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto">
+                    {filterUsers(memberSearchTerm).map(u => (
                       <div 
                         key={u.id}
                         onClick={() => {
                           setSelectedUserId(u.id.toString());
-                          // 🚨 UPDATED: Displays the 7-digit ID in the input box when clicked
+                          setSelectedUserObj(u);
                           setMemberSearchTerm(`${u.full_name} (GI-${u.company_id || u.id}-2026)`);
                           setShowMemberDropdown(false);
                         }}
-                        className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors"
+                        className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"
                       >
                         <p className="text-sm font-black text-slate-800 uppercase">{u.full_name}</p>
-                        {/* 🚨 UPDATED: Displays the 7-digit ID in the dropdown */}
                         <p className="text-[10px] font-bold text-[#03ac13] tracking-widest">GI-{u.company_id || u.id}-2026 • {u.email}</p>
                       </div>
-                    ))
-                  )}
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1.5 relative animate-in fade-in slide-in-from-right-4" ref={referrerDropdownRef}>
+                <label className="text-[10px] font-black uppercase text-[#f59e0b] tracking-widest pl-1">Referring Member (Optional - Earns PV)</label>
+                <div className="relative">
+                  <input 
+                    type="text"
+                    value={referrerSearchTerm}
+                    onChange={(e) => {
+                      setReferrerSearchTerm(e.target.value);
+                      setShowReferrerDropdown(true);
+                      setSelectedReferrerObj(null);
+                    }}
+                    onFocus={() => setShowReferrerDropdown(true)}
+                    placeholder="Search Referrer Name or ID (Leave blank if none)..."
+                    className={`w-full pl-12 pr-4 py-4 rounded-xl bg-amber-50/30 border focus:ring-2 outline-none text-sm font-bold text-slate-700 transition-all ${selectedReferrerObj ? 'border-[#f59e0b] ring-1 ring-[#f59e0b]/20' : 'border-amber-200 focus:border-[#f59e0b]'}`}
+                  />
+                  {selectedReferrerObj ? <Gift size={16} className="absolute left-4 top-4 text-[#f59e0b]" /> : <Search size={16} className="absolute left-4 top-4 text-amber-400" />}
                 </div>
-              )}
-            </div>
+
+                {showReferrerDropdown && (
+                  <div className="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-60 overflow-y-auto">
+                    {filterUsers(referrerSearchTerm).map(u => (
+                      <div 
+                        key={u.id}
+                        onClick={() => {
+                          setSelectedReferrerObj(u);
+                          setReferrerSearchTerm(`${u.full_name} (GI-${u.company_id || u.id}-2026)`);
+                          setShowReferrerDropdown(false);
+                        }}
+                        className="p-4 hover:bg-amber-50 cursor-pointer border-b border-slate-50 last:border-0"
+                      >
+                        <p className="text-sm font-black text-slate-800 uppercase">{u.full_name}</p>
+                        <p className="text-[10px] font-bold text-[#f59e0b] tracking-widest">GI-{u.company_id || u.id}-2026 • {u.email}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">M-Pesa Phone Number</label>
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Customer's M-Pesa Phone</label>
               <input 
                 required 
                 type="tel" 
@@ -219,36 +309,76 @@ const StkPush: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Link Product</label>
-              <select required value={selectedProductId} onChange={handleProductChange} className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:border-[#03ac13] outline-none text-sm font-bold text-slate-700 transition-all">
-                <option value="" disabled>-- Choose a Product --</option>
-                {products.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} - KES {p.distributor_price?.toLocaleString()} | {p.fixed_pv || p.pv} PV</option>
-                ))}
-              </select>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-1 space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Quantity</label>
+                <div className="relative">
+                  <input 
+                    required 
+                    type="number" 
+                    min="1"
+                    value={quantity}
+                    onChange={e => setQuantity(parseInt(e.target.value) || 1)}
+                    className="w-full p-4 pl-10 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:border-[#03ac13] outline-none text-sm font-black text-slate-800 transition-all text-center"
+                  />
+                  <Hash size={16} className="absolute left-3 top-4 text-slate-400" />
+                </div>
+              </div>
+
+              <div className="col-span-2 space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Select Product</label>
+                <select required value={selectedProductId} onChange={handleProductChange} className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:border-[#03ac13] outline-none text-sm font-bold text-slate-700 transition-all">
+                  <option value="" disabled>-- Choose a Product --</option>
+                  {products.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} - KES {p.distributor_price?.toLocaleString()} | {p.fixed_pv || p.pv} PV</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Amount to Bill (KES)</label>
-              <input 
-                required 
-                type="number" 
-                min="1"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="Enter amount" 
-                className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:ring-2 focus:border-[#03ac13] outline-none text-lg font-black text-[#03ac13] transition-all"
-              />
+              <label className="text-[10px] font-black uppercase tracking-widest pl-1 flex justify-between items-center text-slate-400">
+                <span>Total Amount to Bill (KES)</span>
+                {buyerType === 'walk-in' && <span className="text-[#f59e0b]">Editable Retail Price</span>}
+              </label>
+              <div className="relative">
+                <input 
+                  required 
+                  type="number" 
+                  min={minPriceAllowed}
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  disabled={buyerType === 'member'} 
+                  placeholder="Enter amount" 
+                  className={`w-full p-4 pl-12 rounded-xl border outline-none text-lg font-black transition-all ${
+                    buyerType === 'member' 
+                      ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed' 
+                      : isPriceTooLow ? 'bg-red-50 border-red-400 text-red-600 focus:ring-red-200' : 'bg-amber-50 border-amber-200 text-[#f59e0b] focus:border-[#f59e0b] focus:ring-2 focus:ring-amber-100'
+                  }`}
+                />
+                <Tag size={20} className={`absolute left-4 top-[1.1rem] ${buyerType === 'member' ? 'text-slate-400' : isPriceTooLow ? 'text-red-400' : 'text-[#f59e0b]'}`} />
+              </div>
+              {isPriceTooLow && <p className="text-[9px] font-black text-red-500 uppercase tracking-widest mt-1">Minimum strict wholesale price: KES {minPriceAllowed.toLocaleString()}</p>}
             </div>
 
-            <button disabled={isPushing} type="submit" className="w-full bg-[#03ac13] hover:bg-green-700 text-white py-5 rounded-xl font-black text-[11px] uppercase tracking-[0.15em] transition-all shadow-lg shadow-green-100 mt-2 flex justify-center items-center gap-2 disabled:opacity-50">
+            <div className="bg-[#1d3557] rounded-2xl p-4 flex items-center justify-between shadow-inner">
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-blue-300">Live PV Routing</p>
+                <p className="text-xs font-black text-white mt-0.5 truncate max-w-[200px]">{pvRecipient}</p>
+              </div>
+              <div className="text-right">
+                <span className="bg-green-500 text-white px-3 py-1 rounded-lg text-sm font-black shadow-md shadow-green-500/20">
+                  +{livePV} PV
+                </span>
+              </div>
+            </div>
+
+            <button disabled={isPushing || isPriceTooLow} type="submit" className="w-full bg-[#03ac13] hover:bg-green-700 text-white py-5 rounded-xl font-black text-[11px] uppercase tracking-[0.15em] transition-all shadow-lg shadow-green-100 mt-2 flex justify-center items-center gap-2 disabled:opacity-50">
               {isPushing ? <><Loader2 size={16} className="animate-spin" /> Initiating Daraja...</> : 'Send STK Push Request'}
             </button>
           </form>
         </section>
 
-        {/* RIGHT COLUMN: RECENT TRANSACTIONS LEDGER */}
         <section className="bg-[#1d3557] rounded-[2.5rem] shadow-xl overflow-hidden text-white flex flex-col h-[700px]">
           <div className="p-8 border-b border-white/10 bg-white/5 shrink-0">
             <h3 className="text-lg font-black uppercase tracking-tighter text-blue-100">Live Payments Ledger</h3>
@@ -282,7 +412,7 @@ const StkPush: React.FC = () => {
                 )}
 
                 {transactions.map((tx, i) => {
-                  const name = tx.distributor_name || tx.name || 'Member';
+                  const name = tx.distributor_name || tx.name || 'Walk-in Customer';
                   const amount = tx.amount || 0;
                   const status = tx.status || 'PENDING';
                   const dateRaw = tx.created_at || tx.date;
