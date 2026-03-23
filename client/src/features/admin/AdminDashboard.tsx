@@ -10,6 +10,7 @@ import InventoryTable from './components/InventoryTable';
 import StkPush from './components/StkPush';
 import CreditManagement from './components/CreditManagement';
 import MigrateMember from './components/MigrateMember';
+import AdminPromotions from './components/AdminPromotions';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -36,8 +37,8 @@ const AdminDashboard = () => {
       <div className="px-8 pt-8 relative">
         <h2 className="text-3xl font-black text-slate-900 uppercase mb-8">Admin Dashboard</h2>
         <nav className="flex gap-2.5 overflow-x-auto pb-4 scrollbar-hide">
-          {/* 🚨 ADDED 'migration' TO THE TABS ARRAY */}
-          {['users', 'migration', 'products', 'inventory', 'STK push', 'credit'].map((tab) => (
+          {/* 🚨 ADDED 'promotions' TO THE TABS ARRAY */}
+          {['users', 'migration', 'products', 'inventory', 'STK push', 'credit', 'promotions'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`px-7 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] border-2 transition-all 
                 ${activeTab === tab ? 'bg-[#1d3557] text-white border-[#1d3557] shadow-lg shadow-blue-50' : 'bg-white text-slate-400 border-slate-100'}`}
@@ -50,7 +51,6 @@ const AdminDashboard = () => {
 
       <main className="flex-1 px-8 pb-12 relative">
         {activeTab === 'users' && <UserTable searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
-        
         
         {activeTab === 'migration' && (
           <div className="animate-in fade-in duration-500 pt-4">
@@ -70,6 +70,9 @@ const AdminDashboard = () => {
         {activeTab === 'STK push' && <StkPush />}
         
         {activeTab === 'credit' && <CreditManagement />}
+
+        
+        {activeTab === 'promotions' && <AdminPromotions />}
       </main>
     </div>
   );
