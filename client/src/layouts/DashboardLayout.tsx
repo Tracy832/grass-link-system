@@ -88,6 +88,15 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
             📜 Qualifications
           </button>
 
+          {/* 🚨 NEW: Promotions & Rewards */}
+          <button 
+            onClick={() => navigate('/promotions')} 
+            className={`w-full text-left px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${location.pathname === '/promotions' ? 'bg-white/10 border-l-4' : 'opacity-60 hover:bg-white/5 border-l-4 border-transparent'}`}
+            style={{ borderColor: location.pathname === '/promotions' ? colors.green : 'transparent' }}
+          >
+            🎁 Rewards & Promos
+          </button>
+
           {/* Profile */}
           <button 
             onClick={() => navigate('/profile')} 
@@ -164,30 +173,36 @@ const DashboardLayout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       {/* 3. MOBILE BOTTOM NAVIGATION */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-2 py-3 flex justify-between items-center md:hidden z-50 shadow-[0_-4px_15px_rgba(0,0,0,0.08)]">
-        <button onClick={() => navigate('/dashboard')} className={`flex flex-col items-center flex-1 transition-all ${location.pathname === '/dashboard' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 px-1 py-3 flex justify-between items-center md:hidden z-50 shadow-[0_-4px_15px_rgba(0,0,0,0.08)] overflow-x-auto scrollbar-hide">
+        <button onClick={() => navigate('/dashboard')} className={`flex flex-col items-center min-w-[64px] flex-1 transition-all ${location.pathname === '/dashboard' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}>
           <span className="text-xl">🏠</span>
           <span className="text-[8px] font-black uppercase mt-1">Home</span>
         </button>
 
-        <button onClick={() => navigate('/tree')} className={`flex flex-col items-center flex-1 transition-all ${location.pathname === '/tree' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}>
+        <button onClick={() => navigate('/tree')} className={`flex flex-col items-center min-w-[64px] flex-1 transition-all ${location.pathname === '/tree' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}>
           <span className="text-xl">🌳</span>
           <span className="text-[8px] font-black uppercase mt-1">Tree</span>
         </button>
 
-        <button onClick={() => navigate('/qualifications')} className={`flex flex-col items-center flex-1 transition-all ${location.pathname === '/qualifications' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}>
+        <button onClick={() => navigate('/qualifications')} className={`flex flex-col items-center min-w-[64px] flex-1 transition-all ${location.pathname === '/qualifications' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}>
           <span className="text-xl">📜</span>
           <span className="text-[8px] font-black uppercase mt-1">Rules</span>
         </button>
 
+        {/* 🚨 NEW: Mobile Promotions */}
+        <button onClick={() => navigate('/promotions')} className={`flex flex-col items-center min-w-[64px] flex-1 transition-all ${location.pathname === '/promotions' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}>
+          <span className="text-xl">🎁</span>
+          <span className="text-[8px] font-black uppercase mt-1">Promos</span>
+        </button>
+
         {/* Profile (NEW Mobile) */}
-        <button onClick={() => navigate('/profile')} className={`flex flex-col items-center flex-1 transition-all ${location.pathname === '/profile' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}>
+        <button onClick={() => navigate('/profile')} className={`flex flex-col items-center min-w-[64px] flex-1 transition-all ${location.pathname === '/profile' ? 'text-[#03ac13] scale-110' : 'text-slate-400'}`}>
           <span className="text-xl">👤</span>
           <span className="text-[8px] font-black uppercase mt-1">Profile</span>
         </button>
 
         {/* Mobile Logout (Exit) */}
-        <button onClick={handleLogout} className="flex flex-col items-center flex-1 text-red-400 active:scale-95">
+        <button onClick={handleLogout} className="flex flex-col items-center min-w-[64px] flex-1 text-red-400 active:scale-95">
           <span className="text-xl">🚪</span>
           <span className="text-[8px] font-black uppercase mt-1">Exit</span>
         </button>
