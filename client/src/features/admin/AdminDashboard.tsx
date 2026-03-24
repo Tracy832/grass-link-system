@@ -11,6 +11,7 @@ import StkPush from './components/StkPush';
 import CreditManagement from './components/CreditManagement';
 import MigrateMember from './components/MigrateMember';
 import AdminPromotions from './components/AdminPromotions';
+import AdminReports from './components/AdminReports';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ const AdminDashboard = () => {
         <h2 className="text-3xl font-black text-slate-900 uppercase mb-8">Admin Dashboard</h2>
         <nav className="flex gap-2.5 overflow-x-auto pb-4 scrollbar-hide">
           {/* 🚨 ADDED 'promotions' TO THE TABS ARRAY */}
-          {['users', 'migration', 'products', 'inventory', 'STK push', 'credit', 'promotions'].map((tab) => (
+          {['users', 'migration', 'products', 'inventory', 'STK push', 'credit', 'promotions', 'reports'].map((tab) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`px-7 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] border-2 transition-all 
                 ${activeTab === tab ? 'bg-[#1d3557] text-white border-[#1d3557] shadow-lg shadow-blue-50' : 'bg-white text-slate-400 border-slate-100'}`}
@@ -73,6 +74,8 @@ const AdminDashboard = () => {
 
         
         {activeTab === 'promotions' && <AdminPromotions />}
+
+        {activeTab === 'reports' && <AdminReports />}
       </main>
     </div>
   );
