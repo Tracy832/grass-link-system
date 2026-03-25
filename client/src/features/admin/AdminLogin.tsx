@@ -28,8 +28,13 @@ const AdminLogin: React.FC = () => {
 
       // Save the REAL tokens securely
       localStorage.setItem('userToken', data.access_token);
-      localStorage.setItem('userRole', 'admin'); 
-      localStorage.setItem('userName', data.user?.full_name || 'System Admin');
+      localStorage.setItem('userRole', data.user?.role || 'admin'); 
+      localStorage.setItem('userName', data.user?.name || 'System Admin');
+      localStorage.setItem('userId', data.user?.id?.toString() || '');
+
+      // 🚨 NEW: Save the Branch Data for the Multi-Tenant Dashboard
+      localStorage.setItem('branch_id', data.user?.branch_id?.toString() || '1');
+      localStorage.setItem('branch_name', data.user?.branch_name || 'Main Headquarters');
 
       // Redirect to the protected dashboard
       navigate('/admin'); 
