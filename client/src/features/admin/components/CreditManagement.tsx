@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../../services/api';
-import { PackageOpen, AlertCircle, CheckCircle2, CalendarDays, Receipt, ShieldAlert, FileText, Search, Clock, CheckCircle } from 'lucide-react';
+import { PackageOpen, AlertCircle, CheckCircle2, CalendarDays, Receipt, ShieldAlert, FileText, Search, Clock, CheckCircle, X, Smartphone } from 'lucide-react';
 
 const CreditManagement: React.FC = () => {
-  // --- UI STATE ---
   const [activeTab, setActiveTab] = useState<'consignment' | 'reconciliation' | 'ledger'>('consignment');
   const [isLoading, setIsLoading] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
   const [isFetchingData, setIsFetchingData] = useState(true);
   const [isLoadingLedger, setIsLoadingLedger] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -13,28 +13,30 @@ const CreditManagement: React.FC = () => {
 
   const colors = { navy: '#1d3557', green: '#03ac13', orange: '#f59e0b', red: '#dc2626', blue: '#3b82f6' };
 
-  // --- LIVE DATA STATE ---
   const [products, setProducts] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [consignments, setConsignments] = useState<any[]>([]);
 
-  // --- SHARED SMART SEARCH STATE ---
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showMemberDropdown, setShowMemberDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // --- CONSIGNMENT STATE ---
   const [productId, setProductId] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [dueDate, setDueDate] = useState('');
 
-  // --- RECONCILIATION STATE ---
   const [reconPv, setReconPv] = useState('');
   const [reconReceipt, setReconReceipt] = useState('');
   const [reconMessage, setReconMessage] = useState('');
 
-  // FETCH PRODUCTS & USERS ON LOAD
+  // 🚨 SETTLEMENT MODAL STATE (NOW WITH M-PESA FIELDS)
+  const [settleModal, setSettleModal] = useState<{isOpen: boolean, consignment: any | null}>({isOpen: false, consignment: null});
+  const [qtySold, setQtySold] = useState<number>(0);
+  const [qtyReturned, setQtyReturned] = useState<number>(0);
+  const [settlePhone, setSettlePhone] = useState<string>('');
+  const [settleReceipt, setSettleReceipt] = useState<string>('');
+
   useEffect(() => {
     const fetchData = async () => {
       setIsFetchingData(true);
@@ -43,7 +45,6 @@ const CreditManagement: React.FC = () => {
           apiClient('/products/', { method: 'GET' }),
           apiClient('/distributors/', { method: 'GET' })
         ]);
-        
         setProducts(Array.isArray(productsData) ? productsData : (productsData.items || productsData.data || []));
         setUsers(Array.isArray(usersData) ? usersData : (usersData.items || []));
       } catch (err) {
@@ -55,26 +56,26 @@ const CreditManagement: React.FC = () => {
     fetchData();
   }, []);
 
-  // FETCH CONSIGNMENTS WHEN LEDGER TAB IS OPENED AND A USER IS SELECTED
+  const fetchUserConsignments = async () => {
+    if (!selectedUser) return;
+    setIsLoadingLedger(true);
+    const targetId = selectedUser.company_id || selectedUser.id; 
+    try {
+      const data = await apiClient(`/consignments/distributor/${targetId}`, { method: 'GET' });
+      setConsignments(Array.isArray(data) ? data : (data.items || data.data || []));
+    } catch (err: any) {
+      setConsignments([]);
+    } finally {
+      setIsLoadingLedger(false);
+    }
+  };
+
   useEffect(() => {
-    if (activeTab === 'ledger' && selectedUser?.id) {
-      const fetchUserConsignments = async () => {
-        setIsLoadingLedger(true);
-        try {
-          const data = await apiClient(`/consignments/distributor/${selectedUser.id}`, { method: 'GET' });
-          setConsignments(Array.isArray(data) ? data : (data.items || data.data || []));
-        } catch (err: any) {
-          console.error("Failed to fetch ledger", err);
-          setConsignments([]);
-        } finally {
-          setIsLoadingLedger(false);
-        }
-      };
+    if (activeTab === 'ledger' && selectedUser) {
       fetchUserConsignments();
     }
-  }, [activeTab, selectedUser?.id]);
+  }, [activeTab, selectedUser]);
 
-  // CLOSE DROPDOWN WHEN CLICKING OUTSIDE
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -85,30 +86,31 @@ const CreditManagement: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // SMART FILTER FOR USERS
   const filteredUsers = users.filter(u => {
     const q = memberSearchTerm.toLowerCase();
     return (
       u.full_name?.toLowerCase().includes(q) ||
       u.email?.toLowerCase().includes(q) ||
-      u.id?.toString().includes(q)
+      u.company_id?.toLowerCase().includes(q) ||
+      u.id?.toString().includes(q) 
     );
   });
 
-  // --- HANDLERS ---
   const handleIssueConsignment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return setError("Please select a target member from the search bar.");
     
     setIsLoading(true); setError(null); setSuccess(null);
+    const targetCompanyId = selectedUser.company_id || String(selectedUser.id).padStart(7, '0');
+    
     try {
       await apiClient('/consignments/issue', {
         method: 'POST',
         body: JSON.stringify({
-          distributor_email: selectedUser.email, 
+          company_id: targetCompanyId, 
           product_id: parseInt(productId),
           quantity: parseInt(quantity),
-          due_date: dueDate
+          days_to_pay: 30 
         })
       });
       
@@ -146,8 +148,167 @@ const CreditManagement: React.FC = () => {
     }
   };
 
+  // 🚨 NEW: TRIGGERS THE M-PESA PROMPT DIRECTLY FROM THE MODAL
+  const handleSendStkPrompt = async () => {
+    if (!settleModal.consignment || !settlePhone) return;
+    setIsPushing(true);
+    try {
+      await apiClient(`/consignments/${settleModal.consignment.id}/stk-push`, {
+        method: 'POST',
+        body: JSON.stringify({
+          quantity_sold: qtySold,
+          phone_number: settlePhone
+        })
+      });
+      alert(`STK Push successfully sent to ${settlePhone}! Once the customer enters their PIN, the PV will mint automatically.`);
+    } catch (err: any) {
+      alert(err.message || "Failed to send M-Pesa prompt.");
+    } finally {
+      setIsPushing(false);
+    }
+  };
+
+  // 🚨 UPDATED: SUBMITS SETTLEMENT & OPTIONALLY REQUIRES RECEIPT FOR AUDIT
+  const handleSettleSubmit = async () => {
+    const c = settleModal.consignment;
+    if (!c) return;
+
+    const totalTaken = c.quantity_taken || 1;
+    if (qtySold + qtyReturned !== totalTaken) {
+      alert(`Math Error: Sold (${qtySold}) + Returned (${qtyReturned}) must equal Total Taken (${totalTaken}).`);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await apiClient(`/consignments/${c.id}/settle`, {
+        method: 'POST',
+        body: JSON.stringify({
+          quantity_sold: qtySold,
+          quantity_returned: qtyReturned,
+          mpesa_receipt_number: qtySold > 0 ? settleReceipt.trim().toUpperCase() : null
+        })
+      });
+      
+      setSettleModal({isOpen: false, consignment: null});
+      setSuccess(`Consignment #${c.id} successfully settled! PV minted and inventory updated.`);
+      fetchUserConsignments(); 
+    } catch (err: any) {
+      alert(err.message || "Failed to settle consignment. If manual, ensure the receipt code is valid.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Live Math Calculations for the Modal
+  const activeProduct = products.find(p => p.id === settleModal.consignment?.product_id);
+  const livePvEarned = qtySold * (activeProduct?.fixed_pv || activeProduct?.pv || 0);
+  const liveCashOwed = qtySold * (activeProduct?.distributor_price || activeProduct?.price || 0);
+
   return (
-    <div className="animate-in fade-in duration-500 max-w-6xl mx-auto">
+    <div className="animate-in fade-in duration-500 max-w-6xl mx-auto relative">
+      
+      {/* 🚨 THE UPGRADED SETTLEMENT MODAL WITH M-PESA */}
+      {settleModal.isOpen && settleModal.consignment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-[2rem] p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 my-8">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-black text-[#1d3557] uppercase tracking-tight">Settle & Mint PV</h3>
+              <button onClick={() => setSettleModal({isOpen: false, consignment: null})} className="text-slate-400 hover:text-red-500 transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-6 flex justify-between items-center">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Items Taken</p>
+                <p className="text-2xl font-black text-slate-800">{settleModal.consignment.quantity_taken}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#03ac13]">Live PV Calculation</p>
+                <p className="text-2xl font-black text-[#03ac13]">+{livePvEarned} PV</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-blue-600 pl-1">Quantity Sold</label>
+                <input 
+                  type="number" min="0" max={settleModal.consignment.quantity_taken} 
+                  value={qtySold} 
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setQtySold(val);
+                    setQtyReturned(Math.max(0, settleModal.consignment.quantity_taken - val));
+                  }}
+                  className="w-full bg-blue-50 border-2 border-blue-200 rounded-xl p-4 text-center text-xl font-black text-blue-700 outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-amber-500 pl-1">Returned (Restock)</label>
+                <input 
+                  type="number" min="0" max={settleModal.consignment.quantity_taken} 
+                  value={qtyReturned} 
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 0;
+                    setQtyReturned(val);
+                    setQtySold(Math.max(0, settleModal.consignment.quantity_taken - val));
+                  }}
+                  className="w-full bg-amber-50 border-2 border-amber-200 rounded-xl p-4 text-center text-xl font-black text-amber-700 outline-none focus:border-amber-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* 🚨 STK PUSH & PAYMENT SECTION */}
+            {qtySold > 0 && (
+              <div className="bg-slate-100 p-5 rounded-2xl border border-slate-200 mb-6 space-y-4">
+                <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Cash Owed</span>
+                  <span className="text-lg font-black text-slate-900">KES {liveCashOwed.toLocaleString()}</span>
+                </div>
+                
+                <div className="flex gap-2">
+                  <input 
+                    type="tel" 
+                    placeholder="2547..." 
+                    value={settlePhone}
+                    onChange={(e) => setSettlePhone(e.target.value)}
+                    className="w-full px-4 py-3 text-sm bg-white border border-slate-300 rounded-xl outline-none focus:ring-2 focus:border-green-500 font-bold"
+                  />
+                  <button 
+                    onClick={handleSendStkPrompt}
+                    disabled={isPushing || !settlePhone || liveCashOwed <= 0}
+                    className="px-4 bg-green-600 hover:bg-green-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50 whitespace-nowrap flex items-center gap-1"
+                  >
+                    <Smartphone size={14}/> Ping Phone
+                  </button>
+                </div>
+
+                <div className="pt-2">
+                  <label className="text-[9px] font-black uppercase tracking-widest text-red-500 pl-1">Manual Audit Verification (Optional if Ping Works)</label>
+                  <input 
+                    type="text" 
+                    placeholder="Enter M-Pesa Receipt Code (e.g. QWE123RTY4)" 
+                    value={settleReceipt}
+                    onChange={(e) => setSettleReceipt(e.target.value)}
+                    className="w-full px-4 py-3 mt-1 text-sm bg-white border border-red-100 rounded-xl outline-none focus:ring-2 focus:border-red-500 font-bold uppercase tracking-wider"
+                  />
+                </div>
+              </div>
+            )}
+
+            <button 
+              onClick={handleSettleSubmit}
+              disabled={isLoading || (qtySold + qtyReturned !== settleModal.consignment.quantity_taken)}
+              className="w-full bg-[#1d3557] hover:bg-blue-900 text-white font-black text-xs uppercase tracking-widest py-5 rounded-xl transition-all disabled:opacity-50 mt-4"
+            >
+              {isLoading ? 'Processing...' : 'Manual Verify & Close Ledger'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- STANDARD PAGE CONTENT CONTINUES BELOW --- */}
       <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black uppercase tracking-tight" style={{ color: colors.navy }}>
@@ -158,7 +319,6 @@ const CreditManagement: React.FC = () => {
           </p>
         </div>
 
-        {/* SUB-NAVIGATION TOGGLE */}
         <div className="flex bg-white rounded-xl p-1 border border-slate-200 shadow-sm overflow-x-auto scrollbar-hide">
           <button 
             onClick={() => { setActiveTab('consignment'); setError(null); setSuccess(null); }}
@@ -183,7 +343,6 @@ const CreditManagement: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         
-        {/* DYNAMIC FORM/LEDGER AREA */}
         <div className="lg:col-span-3 bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100 min-h-[500px] flex flex-col">
           
           {error && (
@@ -200,7 +359,6 @@ const CreditManagement: React.FC = () => {
             </div>
           )}
 
-          {/* GLOBAL SMART SEARCH (Shared across all 3 tabs) */}
           <div className="mb-8 shrink-0">
             <div className="space-y-1.5 relative" ref={dropdownRef}>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Target Member Account</label>
@@ -214,7 +372,7 @@ const CreditManagement: React.FC = () => {
                     setSelectedUser(null);
                   }}
                   onFocus={() => setShowMemberDropdown(true)}
-                  placeholder={isFetchingData ? "Loading database..." : "Search Name, Email, or ID..."}
+                  placeholder={isFetchingData ? "Loading database..." : "Search Name, Email, or 7-Digit ID..."}
                   className={`w-full pl-12 pr-4 py-4 rounded-xl bg-slate-50 border outline-none text-sm font-bold text-slate-700 transition-all ${selectedUser ? 'border-[#03ac13] ring-1 ring-[#03ac13]/20 bg-green-50/30' : 'border-slate-200 focus:border-[#1d3557] focus:ring-2'}`}
                 />
                 {selectedUser ? (
@@ -234,13 +392,13 @@ const CreditManagement: React.FC = () => {
                         key={u.id}
                         onClick={() => {
                           setSelectedUser(u);
-                          setMemberSearchTerm(`${u.full_name} (GI-${u.id}) - ${u.email}`);
+                          setMemberSearchTerm(`${u.full_name} (GI-${u.company_id || u.id}) - ${u.email}`);
                           setShowMemberDropdown(false);
                         }}
                         className="p-4 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors"
                       >
                         <p className="text-sm font-black text-slate-800 uppercase">{u.full_name}</p>
-                        <p className="text-[10px] font-bold text-[#1d3557] tracking-widest">GI-{u.id}-2026 • {u.email}</p>
+                        <p className="text-[10px] font-bold text-[#1d3557] tracking-widest">GI-{u.company_id || u.id}-2026 • {u.email}</p>
                       </div>
                     ))
                   )}
@@ -249,7 +407,6 @@ const CreditManagement: React.FC = () => {
             </div>
           </div>
 
-          {/* TAB 1: CONSIGNMENT FORM */}
           {activeTab === 'consignment' && (
             <div className="animate-in fade-in slide-in-from-left-4 flex-1">
               <h3 className="text-sm font-black uppercase tracking-widest mb-6 border-b border-slate-100 pb-4 text-[#f59e0b] flex items-center gap-2">
@@ -284,7 +441,6 @@ const CreditManagement: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 2: RECONCILIATION FORM */}
           {activeTab === 'reconciliation' && (
             <div className="animate-in fade-in slide-in-from-right-4 flex-1">
               <h3 className="text-sm font-black uppercase tracking-widest mb-6 border-b border-slate-100 pb-4 text-red-600 flex items-center gap-2">
@@ -312,7 +468,6 @@ const CreditManagement: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 3: ACCOUNT LEDGER */}
           {activeTab === 'ledger' && (
             <div className="animate-in fade-in zoom-in-95 flex-1 flex flex-col h-full">
               <h3 className="text-sm font-black uppercase tracking-widest mb-6 border-b border-slate-100 pb-4 text-blue-500 flex items-center gap-2 shrink-0">
@@ -337,8 +492,8 @@ const CreditManagement: React.FC = () => {
                 ) : (
                   consignments.map((c, i) => {
                     const isSettled = c.status?.toUpperCase() === 'SETTLED';
-                    const amount = c.amount || c.total_price || 0;
-                    const displayDate = c.created_at || c.issue_date ? new Date(c.created_at || c.issue_date).toLocaleDateString() : 'Unknown';
+                    const amount = c.amount || c.total_value || c.total_price || 0;
+                    const displayDate = c.created_at || c.issue_date || c.issued_at ? new Date(c.created_at || c.issue_date || c.issued_at).toLocaleDateString() : 'Unknown';
 
                     return (
                       <div key={c.id || i} className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 hover:border-blue-200 transition-colors">
@@ -348,7 +503,9 @@ const CreditManagement: React.FC = () => {
                           </div>
                           <div>
                             <p className="text-sm font-black text-slate-800 uppercase">Consignment #{c.id}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Issued: {displayDate}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                              Issued: {displayDate} | Qty: {c.quantity_taken}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center justify-between w-full sm:w-auto gap-6">
@@ -358,8 +515,19 @@ const CreditManagement: React.FC = () => {
                               {isSettled ? 'Settled' : 'Pending'}
                             </span>
                           </div>
+                          
+                          {/* 🚨 OPENS THE MODAL AND PRE-FILLS PHONE */}
                           {!isSettled && (
-                            <button className="px-4 py-2 bg-[#1d3557] hover:bg-blue-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all">
+                            <button 
+                              onClick={() => {
+                                setSettleModal({ isOpen: true, consignment: c });
+                                setQtySold(c.quantity_taken || 1); 
+                                setQtyReturned(0);
+                                setSettlePhone(selectedUser?.phone || ''); // Pre-fills the user's phone!
+                                setSettleReceipt('');
+                              }}
+                              className="px-4 py-2 bg-[#1d3557] hover:bg-blue-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shadow-md"
+                            >
                               Settle
                             </button>
                           )}
@@ -399,7 +567,7 @@ const CreditManagement: React.FC = () => {
             {activeTab === 'ledger' && (
               <>
                 <h3 className="text-2xl font-black mb-3 leading-tight tracking-tighter">Account Ledger</h3>
-                <p className="text-white/90 text-sm leading-relaxed font-bold mb-4">View real-time credit status for physical products issued from inventory. <br/><br/>Settling a consignment immediately mints the attached PV and distributes it to the upline network.</p>
+                <p className="text-white/90 text-sm leading-relaxed font-bold mb-4">When a distributor brings back payment or unsold goods, use the 'Settle' button. <br/><br/>The system will ping their phone for payment. Enter the receipt code to instantly mint the PV for sold units and restock returns.</p>
               </>
             )}
           </div>

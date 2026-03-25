@@ -4,13 +4,15 @@ export const apiClient = async (
   endpoint: string, 
   options: RequestInit = {}
 ) => {
-  const token = localStorage.getItem('userToken');
+  const token = localStorage.getItem('userToken'); // Keep 'userToken' as your standard
 
   // 1. Create a proper Headers object to make TypeScript happy
   const headers = new Headers(options.headers);
   
-  // 2. Set default content type (only if not already set, e.g., for FormData)
-  if (!headers.has('Content-Type')) {
+  const isFormData = options.body instanceof FormData;
+
+  // 2. Set default content type ONLY if it's not a file upload
+  if (!isFormData && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 

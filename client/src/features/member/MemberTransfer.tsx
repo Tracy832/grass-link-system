@@ -10,7 +10,7 @@ const MemberTransfer: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
 
   // --- FORM STATE ---
-  const [receiverEmail, setReceiverEmail] = useState('');
+  const [receiverId, setReceiverId] = useState(''); // 🚨 UPDATED: Now uses ID
   const [pvAmount, setPvAmount] = useState('');
   const [authCode, setAuthCode] = useState('');
 
@@ -21,12 +21,19 @@ const MemberTransfer: React.FC = () => {
     e.preventDefault();
     setIsLoading(true); setError(null); setSuccess(null);
 
+    // Basic Validation
+    if (receiverId.length !== 7) {
+      setError("The receiver's ID must be exactly 7 digits.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // Calls the secure Member-only endpoint we wrote earlier
+      // Calls the secure Member-only endpoint
       await apiClient('/distributors/transfer-pv/request-otp', {
         method: 'POST',
         body: JSON.stringify({
-          receiver_email: receiverEmail,
+          receiver_company_id: receiverId, 
           pv_amount: parseFloat(pvAmount)
         })
       });
@@ -34,7 +41,7 @@ const MemberTransfer: React.FC = () => {
       setSuccess("Authorization code sent to your email!");
       setStep(2); // Move to OTP step
     } catch (err: any) {
-      setError(err.message || "Failed to request OTP. Check your PV balance and receiver email.");
+      setError(err.message || "Failed to request OTP. Check your PV balance and ensure the receiver ID is correct.");
     } finally {
       setIsLoading(false);
     }
@@ -48,16 +55,16 @@ const MemberTransfer: React.FC = () => {
       const response = await apiClient('/distributors/transfer-pv/execute', {
         method: 'POST',
         body: JSON.stringify({
-          receiver_email: receiverEmail,
+          receiver_company_id: receiverId, // 🚨 UPDATED payload key
           pv_amount: parseFloat(pvAmount),
           auth_code: authCode
         })
       });
       
-      setSuccess(`Transfer complete! ${pvAmount} PV successfully sent to ${receiverEmail}. New Balance: ${response.new_balance} PV`);
+      setSuccess(`Transfer complete! ${pvAmount} PV successfully sent to ID: ${receiverId}. New Balance: ${response.new_balance} PV`);
       
       // Reset form
-      setReceiverEmail('');
+      setReceiverId('');
       setPvAmount('');
       setAuthCode('');
       setStep(1);
@@ -105,8 +112,8 @@ const MemberTransfer: React.FC = () => {
         {step === 1 && (
           <form onSubmit={handleRequestOTP} className="space-y-5 animate-in slide-in-from-left-4">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Receiver's Email</label>
-              <input required type="email" value={receiverEmail} onChange={(e) => setReceiverEmail(e.target.value)} placeholder="downline@example.com" className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:border-blue-500 transition-all font-bold text-slate-800" />
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Receiver's Official ID</label>
+              <input required type="text" maxLength={7} value={receiverId} onChange={(e) => setReceiverId(e.target.value)} placeholder="e.g. 0012345" className="w-full px-4 py-3 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:border-blue-500 transition-all font-bold text-slate-800 tracking-widest" />
             </div>
 
             <div className="space-y-1.5">
@@ -131,7 +138,7 @@ const MemberTransfer: React.FC = () => {
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-600 mb-3">
                 <KeyRound size={20} />
               </div>
-              <p className="text-xs font-bold text-slate-600">Enter the 6-digit code sent to your email to authorize sending <span className="text-blue-600 font-black">{pvAmount} PV</span> to <span className="text-slate-900">{receiverEmail}</span>.</p>
+              <p className="text-xs font-bold text-slate-600">Enter the 6-digit code sent to your email to authorize sending <span className="text-blue-600 font-black">{pvAmount} PV</span> to ID: <span className="text-slate-900 font-black">{receiverId}</span>.</p>
             </div>
 
             <div className="space-y-1.5">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react'; // 1. Imported the icons
+import { Eye, EyeOff } from 'lucide-react';
 import logo from '../../assets/logo.jpeg';
 import supplementsBg from '../../assets/suplements.jpeg';
 import { apiClient } from '../../services/api';
@@ -8,12 +8,12 @@ import { apiClient } from '../../services/api';
 const MemberLogin: React.FC = () => {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState('');
+  
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // 2. Add state for the password toggle
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -25,14 +25,17 @@ const MemberLogin: React.FC = () => {
       const data = await apiClient('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ 
-          email: email, 
+          email: identifier, 
           password: password 
         })
       });
 
+      
       localStorage.setItem('userToken', data.access_token);
       localStorage.setItem('userRole', data.user?.role || 'member');
-      localStorage.setItem('userName', data.user?.full_name || 'Valued Member');
+      localStorage.setItem('userName', data.user?.name || 'Valued Member');
+      localStorage.setItem('userId', data.user?.id); // Keep internal ID for safety
+      localStorage.setItem('companyId', data.user?.company_id); // The new star of the show!
       
       navigate('/dashboard'); 
 
@@ -59,28 +62,29 @@ const MemberLogin: React.FC = () => {
         )}
 
         <form onSubmit={handleLogin} className="space-y-4">
+          
+          
           <input 
             required 
-            type="email" 
-            placeholder="Email Address" 
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text" 
+            placeholder="Email or Official ID (e.g. 0012345)" 
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value.trim())}
             className="w-full px-4 py-2.5 text-sm bg-white/50 border border-white/50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-gray-800" 
           />
           
-          {/* 3. Password Input Wrapper */}
+          {/* Password Input Wrapper */}
           <div className="relative">
             <input 
               required 
-              type={showPassword ? "text" : "password"} // Toggles between text and hidden
+              type={showPassword ? "text" : "password"} 
               placeholder="Card Number / Password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              // Added pr-10 to give the text room so it doesn't type under the icon
               className="w-full px-4 py-2.5 pr-10 text-sm bg-white/50 border border-white/50 rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-gray-800" 
             />
             <button
-              type="button" // Very important so it doesn't submit the form
+              type="button" 
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-green-900/60 hover:text-green-900 transition-colors focus:outline-none"
             >
